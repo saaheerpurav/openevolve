@@ -43,6 +43,8 @@ openevolve_output*/
 *.log
 demo_output*/
 pr_sanity*/
+tdes_output*/
+examples/*/tdes_output/
 
 # Test cache
 .pytest_cache/

@@ -108,6 +108,28 @@ YAML-based configuration with hierarchical structure:
 3. **Error Resilience**: Individual failures don't crash system - extensive retry logic and timeout protection
 4. **Prompt Engineering**: Template-based system with context-aware building and evolution history
 
+### TDES Mode (`openevolve/tdes/`)
+
+An **additive** evolutionary mode that is independent of the MAP-Elites/island
+controller above. TDES (Test-Driven Evolutionary Synthesis) replaces the scalar
+fitness with a **hierarchical test-pass vector** and runs a *generational* loop
+(see `tdes/controller.py`, mirroring the paper's Appendix A) rather than the
+continuous async iteration loop. Key modules:
+
+- `tdes/types.py` — `TestVector` (hierarchical `score_key`, superset checks),
+  `Candidate` (a codebase as `{module: source}`).
+- `tdes/test_suite.py` — `TDESTestSuite` + sandboxed subprocess runner that
+  captures CEGIS feedback `(description, failing input, error)` without exposing
+  test source.
+- `tdes/crossover.py` — complementary-coverage crossover (the paper's primary
+  contribution); `tdes/memory.py` — negative exemplar memory; `tdes/mutation.py`
+  — `LLMMutator` (reuses `LLMEnsemble` + `code_utils`) and offline
+  `ScriptedMutator`.
+
+Entry point: `tdes-run.py`; example under `examples/tdes_example/`; tests in
+`tests/test_tdes.py` (offline, no API key). TDES reuses `config.Config` for LLM
+settings but adds `tdes/config.py::TDESConfig` for evolutionary parameters.
+
 ### Development Notes
 
 - Python >=3.10 required

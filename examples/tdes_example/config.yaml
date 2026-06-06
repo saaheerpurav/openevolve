@@ -1,0 +1,27 @@
+# TDES configuration for the orders-pipeline example.
+#
+# Offline run (no API key needed):
+#   python tdes-run.py examples/tdes_example/seed examples/tdes_example/suite.py \
+#       --scripted --no-sandbox --gens 5
+#
+# LLM run (uses the `llm:` section below; set OPENAI_API_KEY):
+#   python tdes-run.py examples/tdes_example/seed examples/tdes_example/suite.py \
+#       --config examples/tdes_example/config.yaml --gens 5
+
+tdes:
+  pop_size: 5
+  max_generations: 5
+  window_size: 3
+  diff_based: true
+  sandbox: true
+  suite_timeout: 60
+  output_dir: examples/tdes_example/tdes_output
+
+llm:
+  api_base: "https://api.openai.com/v1"
+  api_key: "${OPENAI_API_KEY}"
+  temperature: 0.7
+  max_tokens: 4096
+  models:
+    - name: "gpt-4o-mini"
+      weight: 1.0

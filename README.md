@@ -219,6 +219,42 @@ OpenEvolve implements a sophisticated **evolutionary coding pipeline** that goes
 
 </details>
 
+## TDES: Test-Driven Evolutionary Synthesis
+
+OpenEvolve ships an additive **Test-Driven Evolutionary Synthesis (TDES)** mode
+(`openevolve/tdes/`) for software-engineering tasks where correctness is defined
+by a **hierarchical test suite** rather than a scalar metric. Instead of
+collapsing results into a single fitness number, TDES preserves the full
+**test-pass vector** and uses it to drive selection, crossover, and mutation.
+
+Mechanisms:
+
+- **Hierarchical test-pass vector** — candidates are ranked lexicographically by
+  passing *system* > *integration* > *unit* tests.
+- **Complementary-coverage crossover** — recombination is gated on test-pass set
+  differences: modules are grafted from a donor only when it passes tests the
+  recipient fails, and accepted only on a *strict superset* of passes (no
+  regressions).
+- **CEGIS-style feedback** — each failing test contributes a
+  `(description, failing input, error)` tuple; test source is withheld to
+  prevent Goodharting.
+- **Negative exemplar memory** — a per-module sliding window of natural-language
+  failure summaries acts as a semantic tabu list in the mutation prompt.
+- **Modular scope isolation** — one module is evolved against its tests at a
+  time and reintegrated only if nothing regresses.
+- **Stagnation detection + escalation** — if no new test passes across a
+  generation, TDES writes a human-readable escalation package and halts.
+
+Run the offline demo (no API key required):
+
+```bash
+python tdes-run.py examples/tdes_example/seed examples/tdes_example/suite.py \
+    --scripted --gens 5
+```
+
+See [`examples/tdes_example/`](examples/tdes_example/) for the worked problem
+and `tests/test_tdes.py` for the mechanism tests.
+
 ## Perfect For
 
 | **Use Case** | **Why OpenEvolve Excels** |
