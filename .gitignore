@@ -45,6 +45,14 @@ demo_output*/
 pr_sanity*/
 tdes_output*/
 examples/*/tdes_output/
+tdes_fpga_output*/
+tdes_fpga_results*/
+
+# TDES-FPGA: local EDA toolchain + cloned benchmark repos (not vendored)
+tools/
+openevolve/tdes/fpga/benchmarks/rtllm/
+openevolve/tdes/fpga/benchmarks/archxbench/
+openevolve/tdes/fpga/benchmarks/resbench/
 
 # Test cache
 .pytest_cache/

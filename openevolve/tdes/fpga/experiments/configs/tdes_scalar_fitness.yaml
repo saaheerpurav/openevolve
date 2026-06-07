@@ -1,0 +1,24 @@
+# TDES-FPGA condition: tdes_scalar_fitness
+#
+# Conditions are selected at runtime via --conditions; this file is a
+# convenience copy of tdes_full.yaml. Run, e.g.:
+#   python -m openevolve.tdes.fpga.experiments.ablation --benchmark rtllm #       --designs adder_8bit --conditions tdes_scalar_fitness --config <this file>
+
+tdes:
+  pop_size: 5
+  max_generations: 5
+  window_size: 3
+  diff_based: false
+  suite_timeout: 120
+  synth_target: ice40
+  output_dir: tdes_fpga_results/runs
+  random_seed: 42
+
+llm:
+  api_base: "https://api.openai.com/v1"
+  api_key: "${OPENAI_API_KEY}"
+  temperature: 0.8
+  max_tokens: 4096
+  models:
+    - name: "gpt-4o"
+      weight: 1.0

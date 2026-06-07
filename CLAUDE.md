@@ -130,6 +130,28 @@ Entry point: `tdes-run.py`; example under `examples/tdes_example/`; tests in
 `tests/test_tdes.py` (offline, no API key). TDES reuses `config.Config` for LLM
 settings but adds `tdes/config.py::TDESConfig` for evolutionary parameters.
 
+#### TDES-FPGA (`openevolve/tdes/fpga/`)
+
+Additive Verilog-RTL layer that reuses the TDES controller/selection/crossover/
+memory **unchanged** (they are duck-typed: the controller only needs
+`suite.run()`, `suite.tests`, `suite.modules_for_tests()`). It swaps the test
+runner for an EDA pipeline:
+
+- `fpga/verilog_runner.py` — iverilog/vvp compile+simulate; interprets the
+  `TDES_PASS/TDES_FAIL` protocol *and* native RTLLM/ArchXBench verdicts into
+  CEGIS feedback. `fpga/synthesis.py` — Yosys LUT/FF extraction (`__synthesis__`
+  sentinel tests). `fpga/verilog_suite.py::VerilogTestSuite` is the drop-in suite.
+- `fpga/benchmark_loader.py` — RTLLM/ArchXBench/ResBench → `(seed, suite,
+  reference-mutator)`; `fpga/testbench_decomposer.py` builds hierarchical suites
+  (reference-gated: only used if the known-good reference passes them).
+- `fpga/ablation.py::AblationController` (subclass) toggles crossover/memory and
+  instruments crossover; `fpga/experiments/` runs the matrix + Table 1/2.
+
+Toolchain: set `OSS_CAD_SUITE_ROOT` (auto-activates bin+lib on import). EDA-gated
+tests live in `fpga/tests/` (skipped when tools absent). Entry point
+`tdes-fpga-run.py`. **Do not modify base `tdes/*` files** — extend via subclass/
+composition as this layer does.
+
 ### Development Notes
 
 - Python >=3.10 required

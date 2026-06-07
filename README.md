@@ -255,6 +255,29 @@ python tdes-run.py examples/tdes_example/seed examples/tdes_example/suite.py \
 See [`examples/tdes_example/`](examples/tdes_example/) for the worked problem
 and `tests/test_tdes.py` for the mechanism tests.
 
+### TDES-FPGA: evolving Verilog RTL
+
+`openevolve/tdes/fpga/` is an additive layer that points TDES at **Verilog RTL**
+generation, swapping the Python import/exec runner for an open-source EDA pipeline
+(Icarus Verilog + Yosys) while reusing the TDES controller, selection,
+complementary-coverage crossover, and negative memory **unchanged**. Failing
+testbenches yield CEGIS feedback `(description, failing input, expected vs got)`;
+synthesis budgets (LUT/FF via Yosys) become system-level tests. It ships loaders
+for **ArchXBench**, **RTLLM v2**, and **ResBench**, a testbench decomposer that
+generates hierarchical unit/integration/system suites (reference-validated), and
+an experiment/ablation harness (TDES-full / no-crossover / no-memory / scalar vs
+single-agent and Pass@5 baselines).
+
+```bash
+export OSS_CAD_SUITE_ROOT=/path/to/oss-cad-suite   # iverilog/vvp/yosys
+# offline harness check (no API key):
+python -m openevolve.tdes.fpga.experiments.run_rtllm --scripted \
+    --designs adder_8bit adder_16bit --conditions tdes_full tdes_no_crossover
+```
+
+See [`openevolve/tdes/fpga/benchmarks/README.md`](openevolve/tdes/fpga/benchmarks/README.md)
+for setup and `openevolve/tdes/fpga/tests/` for the EDA-gated tests.
+
 ## Perfect For
 
 | **Use Case** | **Why OpenEvolve Excels** |
