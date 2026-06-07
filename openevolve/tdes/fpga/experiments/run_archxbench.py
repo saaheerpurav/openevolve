@@ -26,12 +26,15 @@ try:
 except Exception:
     pass
 
-# Sample spanning the difficulty gradient (override with --designs).
+# Verified combinational designs (correct->1/1, wrong->0/1 confirmed). Their
+# testbenches use machine-parseable pass/fail tallies. booth/pipelined designs
+# print bare PASS/FAIL table cells and are excluded. Override with --designs.
 DEFAULT_DESIGNS = [
-    "rca_32bit",  # level-1a
-    "cla_8bit",  # level-1a
-    "aes_sbox",  # level-1a (hard for single-pass LLMs)
-    "barrel_shifter",  # level-1a
+    "rca_32bit",  # level-1a ripple-carry adder
+    "cla_8bit",  # level-1a carry-lookahead adder
+    "brent_kung_32bit",  # level-1c parallel-prefix adder
+    "wallace_multiplier",  # level-1c Wallace-tree multiplier
+    "dadda_multiplier",  # level-1c Dadda multiplier
 ]
 
 

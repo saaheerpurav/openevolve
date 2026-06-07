@@ -134,6 +134,48 @@ TDES is now ≥ single-agent on **every** design, and strictly wins on `div_16bi
 case of TDES, as it should be. (Crossover stays inert here — these are
 single-module designs; its value is in §2–§3.)
 
+## 5. ArchXBench (verified combinational designs)
+
+Run on five ArchXBench complex-arithmetic designs whose pass/fail scoring was
+**verified end-to-end** (a hand-written correct design reads 1/1, a wrong one
+0/1): `rca_32bit`, `cla_8bit` (level-1a), `brent_kung_32bit`, `wallace_multiplier`,
+`dadda_multiplier` (level-1c). The testbenches check *function*, not structure,
+so any functionally-correct RTL passes. (booth/pipelined designs are excluded —
+their testbenches print bare `PASS`/`FAIL` table cells with no count summary and
+a `Pass/Fail` header, which is not safely machine-parseable; reporting numbers we
+cannot trust would be worse than omitting them.)
+
+> A verdict-parser bug initially scored *correct* designs as 0/1 (one testbench
+> prints `PASS = N, FAIL = 0`, which the parser didn't recognize), making a first
+> run look like "all methods fail." It was caught by injecting a known-correct
+> design before drawing conclusions, then fixed (failure-evidence-first parsing)
+> and re-verified. Lesson logged: never trust a benchmark verdict you haven't
+> confirmed against a known-good solution.
+
+**Opus 4.6 (1 seed):**
+
+| Design | tdes_full | single_agent | pass@5 |
+|---|---|---|---|
+| rca_32bit, cla_8bit, brent_kung_32bit, wallace_multiplier | ✓ | ✓ | ✓ |
+| dadda_multiplier | ✓ | ✓ | **✗** |
+| **solve rate** | **5/5** | **5/5** | **4/5** |
+
+**Haiku 4.5 (2 seeds, 10 cells/condition):**
+
+| Condition | cells solved | misses |
+|---|---|---|
+| tdes_full     | **10/10** | — |
+| single_agent  | **10/10** | — |
+| pass@5        | **8/10**  | `wallace_multiplier` (0/2) |
+
+**Takeaway.** Iterative-feedback methods (TDES, single-agent) solve every design
+including the harder Wallace/Dadda multipliers; one-shot pass@5 misses a
+multiplier at *both* model tiers (Opus → dadda, Haiku → wallace). TDES equals
+single-agent on these single-module designs — expected, and the point of the
+§4 fallback. ArchXBench's value here is *valid, verified* scoring on real
+complex-arithmetic RTL; crossover's contribution remains the multi-module §2–§3
+results.
+
 ## Cost / scale
 
 These are low-cost validation runs (fast/mid models, small seed counts) that
