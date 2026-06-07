@@ -253,6 +253,7 @@ _SUMMARY_FAIL_PATTERNS = [
 ]
 _PASS_LINE_RE = re.compile(r"\[PASS\]", re.IGNORECASE)
 _FAIL_LINE_RE = re.compile(r"\[FAIL\]", re.IGNORECASE)
+_MISMATCH_RE = re.compile(r"\bmismatch\b", re.IGNORECASE)  # e.g. "ERROR: Mismatch detected"
 _GENERIC_PASS_RE = re.compile(r"\ball tests passed\b", re.IGNORECASE)
 
 
@@ -296,12 +297,17 @@ def interpret(test_id: str, sim: SimResult, *, timeout: int) -> TestOutcome:
     if "TDES_PASS:" in out:
         return TestOutcome(True, "n/a", "")
 
-    # 2) Pass/fail tally summary (ArchXBench "PASS = N, FAIL = M",
-    #    "TEST SUMMARY: ...", RTLLM "Test completed with N/M failures", etc.) --
+    # 2) Failure evidence FIRST — never let a broken design read as pass.
+    #    Covers count summaries (FAIL=N>0), per-case [FAIL] lines, "Mismatch"
+    #    reports, and RTLLM's ===Error=== banner.
     fail_count = _summary_fail_count(out)
-    if fail_count is not None:
-        if fail_count == 0:
-            return TestOutcome(True, "n/a", "")
+    has_fail_marker = (
+        (fail_count is not None and fail_count > 0)
+        or _FAIL_LINE_RE.search(out)
+        or _MISMATCH_RE.search(out)
+        or _RTLLM_ERROR_RE.search(out)
+    )
+    if has_fail_marker:
         fail = _ARCHX_FAILLINE_RE.search(out)  # concrete counterexample if available
         if fail:
             return TestOutcome(
@@ -309,28 +315,19 @@ def interpret(test_id: str, sim: SimResult, *, timeout: int) -> TestOutcome:
                 _trunc(fail.group(1)),
                 f"expected {_trunc(fail.group(2), 200)}, got {_trunc(fail.group(3), 200)}",
             )
-        return TestOutcome(False, "n/a", f"{fail_count} case(s) failed")
+        detail = f"{fail_count} case(s) failed" if fail_count else _trunc(out[-300:])
+        return TestOutcome(False, "n/a", detail or "design reported a failure")
 
-    # 3) RTLLM / generic explicit verdicts ----------------------------------
-    if _RTLLM_ERROR_RE.search(out):
-        return TestOutcome(False, "n/a", _trunc(out[-300:]) or "design reported Error")
-    if _RTLLM_PASS_RE.search(out) or _GENERIC_PASS_RE.search(out):
+    # 3) Pass evidence — an explicit zero-failure tally or a positive marker.
+    if (
+        fail_count == 0
+        or _RTLLM_PASS_RE.search(out)
+        or _GENERIC_PASS_RE.search(out)
+        or _PASS_LINE_RE.search(out)
+    ):
         return TestOutcome(True, "n/a", "")
 
-    # 4) Per-case [PASS] markers with no [FAIL] -> pass ---------------------
-    if _PASS_LINE_RE.search(out) and not _FAIL_LINE_RE.search(out):
-        return TestOutcome(True, "n/a", "")
-    if _FAIL_LINE_RE.search(out):
-        fail = _ARCHX_FAILLINE_RE.search(out)
-        if fail:
-            return TestOutcome(
-                False,
-                _trunc(fail.group(1)),
-                f"expected {_trunc(fail.group(2), 200)}, got {_trunc(fail.group(3), 200)}",
-            )
-        return TestOutcome(False, "n/a", "one or more cases failed")
-
-    # 5) Ambiguous: simulation ran but emitted no recognizable verdict ------
+    # 4) Ambiguous: simulation ran but emitted no recognizable verdict ------
     tail = _trunc((out or sim.stderr or "")[-300:])
     return TestOutcome(False, "n/a", f"no pass marker found; output tail: {tail}")
 
