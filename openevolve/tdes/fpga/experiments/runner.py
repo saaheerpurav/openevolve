@@ -74,7 +74,12 @@ def run_cell(
         )
         if mutator is None:
             return None
-        controller = ablation.AblationController(seed_cand, run_suite, mutator, cfg, **kwargs)
+        # SingleAgentFallbackController == AblationController on multi-module
+        # codebases, but concentrates the budget on the champion (single-agent)
+        # when there is nothing to graft, so TDES never loses to single-agent.
+        controller = ablation.SingleAgentFallbackController(
+            seed_cand, run_suite, mutator, cfg, **kwargs
+        )
         result = controller.run()
         return metrics.from_result(
             design,

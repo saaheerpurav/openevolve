@@ -115,6 +115,55 @@ class SimResult:
     compile_error: Optional[str] = None
 
 
+def _kill_tree(proc: "subprocess.Popen") -> None:
+    """Kill a process and all of its descendants.
+
+    ``subprocess.run(timeout=...)`` only kills the immediate child; on Windows a
+    surviving grandchild (e.g. an ``ivlpp``/codegen helper) can keep the stdout
+    pipe open and block ``communicate()`` forever. Killing the whole tree avoids
+    that hang.
+    """
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                capture_output=True,
+                timeout=15,
+            )
+        else:
+            import signal
+
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+
+
+def _run(cmd: List[str], cwd: str, timeout: int):
+    """Run a command with a hard timeout that kills the whole process tree.
+
+    Returns ``(returncode, stdout, stderr, timed_out)``.
+    """
+    popen_kwargs = {}
+    if os.name != "nt":
+        popen_kwargs["start_new_session"] = True  # own process group for killpg
+    proc = subprocess.Popen(
+        cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **popen_kwargs
+    )
+    try:
+        out, err = proc.communicate(timeout=timeout)
+        return proc.returncode, out, err, False
+    except subprocess.TimeoutExpired:
+        _kill_tree(proc)
+        try:
+            out, err = proc.communicate(timeout=10)
+        except Exception:
+            out, err = "", ""
+        return -1, out, err, True
+
+
 def _write_sources(modules: Dict[str, str], testbench: str, dest: str) -> List[str]:
     src_files = []
     for name, source in modules.items():
@@ -151,24 +200,16 @@ def simulate(
         src_files = _write_sources(modules, testbench, tmp)
         sim_out = os.path.join(tmp, "sim.vvp")
         compile_cmd = [iverilog, f"-g{verilog_std}", "-o", sim_out] + src_files
-        try:
-            comp = subprocess.run(
-                compile_cmd, capture_output=True, text=True, timeout=timeout, cwd=tmp
-            )
-        except subprocess.TimeoutExpired:
+        rc, c_out, c_err, c_timeout = _run(compile_cmd, tmp, timeout)
+        if c_timeout:
             return SimResult(False, "", "", -1, True, f"compilation exceeded {timeout}s")
-        if comp.returncode != 0 or not os.path.exists(sim_out):
-            return SimResult(
-                False, comp.stdout, comp.stderr, comp.returncode, False, _trunc(comp.stderr)
-            )
+        if rc != 0 or not os.path.exists(sim_out):
+            return SimResult(False, c_out, c_err, rc, False, _trunc(c_err))
 
-        try:
-            run = subprocess.run(
-                [vvp, sim_out], capture_output=True, text=True, timeout=timeout, cwd=tmp
-            )
-        except subprocess.TimeoutExpired:
+        r_rc, r_out, r_err, r_timeout = _run([vvp, sim_out], tmp, timeout)
+        if r_timeout:
             return SimResult(True, "", "", -1, True, None)
-        return SimResult(True, run.stdout, run.stderr, run.returncode, False, None)
+        return SimResult(True, r_out, r_err, r_rc, False, None)
 
 
 # ---------------------------------------------------------------------------

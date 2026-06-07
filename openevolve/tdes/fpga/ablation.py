@@ -156,6 +156,77 @@ class DiverseScheduleController(AblationController):
         return working if changed else None
 
 
+class SingleAgentFallbackController(AblationController):
+    """TDES that degrades to single-agent repair when there is nothing to graft.
+
+    Complementary-coverage crossover operates *between modules*, so on a
+    single-module codebase there is nothing to graft and the population provides
+    no benefit — yet it still dilutes the per-generation mutation budget across
+    several mediocre candidates. That is why, on single-module designs, vanilla
+    TDES can underperform a single agent that pours its whole budget into one
+    lineage.
+
+    This controller fixes that: when the codebase has a single module, it
+    concentrates each generation's mutation budget on the *champion* as
+    sequential CEGIS repair (i.e. single-agent), instead of spreading it thin.
+    Single-agent thus becomes a strict special case of TDES, so TDES performs at
+    least as well. On multi-module codebases the full population/crossover
+    machinery runs unchanged.
+    """
+
+    def _single_module(self) -> bool:
+        return len(self.seed.modules) == 1
+
+    async def _mutation_phase(self, survivors: List[Candidate], gen: int) -> List[Candidate]:
+        if not self._single_module():
+            return await super()._mutation_phase(survivors, gen)
+        champion = selection.best(survivors)
+        rounds = max(1, len(survivors))  # same call budget as mutating each survivor once
+        repaired = await self._sequential_repair(champion, gen, rounds)
+        return [repaired] if repaired is not None else []
+
+    async def _sequential_repair(self, champion: Candidate, gen: int, rounds: int):
+        """Iteratively repair the champion (single-agent style), accepting only
+        non-regressing edits, for up to ``rounds`` LLM calls."""
+        current = champion.clone(
+            generation=gen, parent_id=champion.id, metadata={"origin": "single_agent_fallback"}
+        )
+        current.vector = champion.vector
+        total = len(self.suite.tests)
+        for _ in range(rounds):
+            if current.vector.total_passes == total:
+                break
+            failing = current.vector.failing_modules()
+            if not failing:
+                break
+            module = failing[0]
+            feedback = [
+                r.feedback
+                for r in current.vector.results.values()
+                if not r.passed and r.module == module and r.feedback is not None
+            ]
+            proposal = await self.mutator.propose(
+                candidate=current,
+                module=module,
+                feedback=feedback,
+                memory_text=self.memory.render(module),
+                generation=gen,
+            )
+            if proposal is None:
+                continue
+            trial = current.clone(generation=gen, parent_id=champion.id)
+            trial.modules[module] = proposal.new_source
+            trial.vector = self.suite.run(
+                trial, sandbox=self.config.sandbox, timeout=self.config.suite_timeout
+            )
+            if trial.vector.is_superset_of(current.vector):
+                current = trial
+                current.metadata["origin"] = "single_agent_fallback"
+            else:
+                self._record_failure(module, gen, proposal.approach, trial.vector, current)
+        return current
+
+
 def flatten_levels(suite: VerilogTestSuite) -> VerilogTestSuite:
     """Return a copy of ``suite`` with every test at UNIT level.
 
