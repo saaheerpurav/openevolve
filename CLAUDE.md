@@ -202,6 +202,34 @@ the FPGA layer's suite-agnostic `AblationController` family.
   `tdes-combopt-run.py`; tests in `combopt/tests/` (gated on ortools, no API key).
   **Do not modify base `tdes/*` files.**
 
+#### TDES-MAE (`openevolve/tdes/mae/`)
+
+Additive layer that evolves an *ML training component*: the patch-masking
+strategy (`masking.py::generate_mask()`) of a tiny Masked Autoencoder
+(`model.py`, ~160K params) pretrained on a cached CIFAR-10 subset
+(`data.py`, gitignored under `mae/data/`). A validation experiment for
+applying TDES beyond code synthesis (pilot for EEG-LeJEPA); single-module
+candidate, so **crossover is disabled** — this layer exercises hierarchical
+selection, CEGIS feedback, and negative memory.
+
+- `evaluator.py::MAESuite` — duck-typed 3-tier suite: 8 UNIT checks on the
+  mask itself (no training compute until all pass) → INTEGRATION
+  (10-epoch reconstruction-loss gate) → SYSTEM (30-epoch pretrain + frozen
+  linear probe, with the scalar probe accuracy expressed as a **ladder of
+  SYSTEM tests** so selection sees an accuracy gradient). Candidate code runs
+  in a persistent worker subprocess (timeout → kill+respawn); evals are
+  memoized by source hash. CEGIS feedback carries the measured scalars.
+- `controller.py::MAEEvolutionController` — base loop plus *stagnation
+  patience* (a flat generation is routine with a noisy ML objective) and a
+  no-op crossover phase. `trainer.py` seeds everything so a (source, seed)
+  pair is reproducible. Tier thresholds in `config.py` are calibrated against
+  the measured random-mask baseline (30-epoch probe 0.360±0.007 on CPU).
+
+Entry point: `python -m openevolve.tdes.mae.run` (CPU default, `--scripted`
+for offline smoke, `--compare-only` for head-to-head). Offline tests in
+`mae/tests/`. Results land in `tdes_mae_results/` (gitignored). **Do not
+modify base `tdes/*` files.**
+
 ### Development Notes
 
 - Python >=3.10 required

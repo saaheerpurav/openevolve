@@ -68,3 +68,7 @@ htmlcov/
 # For SR
 secrets.yaml
 problems
+
+# TDES-MAE: results + CIFAR cache (not vendored)
+tdes_mae_results*/
+openevolve/tdes/mae/data/

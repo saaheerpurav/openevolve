@@ -1,0 +1,24 @@
+# TDES-MAE config: Anthropic Haiku via the OpenAI-compatible endpoint.
+#   export ANTHROPIC_API_KEY=...
+#   python -m openevolve.tdes.mae.run --config openevolve/tdes/mae/configs/anthropic_haiku.yaml
+
+tdes:
+  pop_size: 4
+  max_generations: 10
+  window_size: 3
+  diff_based: false        # the mask fn is ~20 lines; full rewrites
+  sandbox: true            # candidate code runs in the persistent worker process
+  suite_timeout: 600       # one full eval = unit + 10-epoch + 30-epoch + probe (CPU)
+  output_dir: tdes_mae_results/runs
+  random_seed: 42
+
+llm:
+  api_base: "https://api.anthropic.com/v1/"
+  api_key: "${ANTHROPIC_API_KEY}"
+  temperature: 0.9
+  max_tokens: 4096
+  timeout: 120
+  retries: 3
+  models:
+    - name: "claude-haiku-4-5-20251001"
+      weight: 1.0
