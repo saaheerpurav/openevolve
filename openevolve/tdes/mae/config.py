@@ -62,15 +62,23 @@ class MAEConfig:
     # SYSTEM accuracy ladder: floor (sanity) then rungs around/above the measured
     # baseline (random mask, 30 epochs: 0.360 +/- 0.007 over 3 seeds; random
     # encoder: 0.292).
+    # Rung spacing lesson (first run): trials reached 0.369 with the next rung
+    # at 0.37 — real progress was invisible to selection (equal-rung candidates
+    # are discarded by the no-regression filter), so the run "stagnated" while
+    # improving. Rungs near the baseline must be finer than the gains a single
+    # mutation can plausibly make.
     system_acc_rungs: Tuple[float, ...] = (
         0.20,  # above-random sanity floor (CIFAR-10 random = 10%)
         0.30,
-        0.34,  # last rung the baseline passes
-        0.37,  # first rung above baseline (+1 sigma)
-        0.39,
-        0.41,
-        0.43,
-        0.45,
+        0.34,
+        0.355,  # last rung the baseline (0.360-0.362 @ eval seed) passes
+        0.365,
+        0.375,
+        0.385,
+        0.40,
+        0.42,
+        0.44,
+        0.46,
         0.48,
     )
 

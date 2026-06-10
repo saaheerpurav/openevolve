@@ -129,6 +129,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--out", default="tdes_mae_results")
     parser.add_argument("--scripted", action="store_true", help="offline smoke test (no LLM)")
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
+    parser.add_argument(
+        "--patience", type=int, default=3, help="flat generations before escalating"
+    )
     parser.add_argument("--compare-only", default=None, metavar="MASK_PY")
     args = parser.parse_args(argv)
 
@@ -163,7 +166,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         mutator = MaskLLMMutator(LLMEnsemble(tdes_cfg.llm.llm.models))
 
     suite = MAESuite(mae_cfg)
-    controller = build_controller(masking.BASELINE_SOURCE, suite, mutator, tdes_cfg)
+    controller = build_controller(
+        masking.BASELINE_SOURCE, suite, mutator, tdes_cfg, stagnation_patience=args.patience
+    )
     try:
         result = controller.run()
 
