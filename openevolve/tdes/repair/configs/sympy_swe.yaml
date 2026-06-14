@@ -1,0 +1,10 @@
+tdes:
+  pop_size: 8
+  max_generations: 6
+  window_size: 3
+  diff_based: false
+  sandbox: false
+  suite_timeout: 120
+  mutate_modules_per_candidate: 1
+  output_dir: results/repair_sympy_final/_tdes_output
+  random_seed: 42
