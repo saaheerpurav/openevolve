@@ -67,6 +67,36 @@ Gen 2: population union 7/9 (point-fixed 4/9 + blockmatrix-fixed 3/9 in survivor
 Gen 3: solved (9/9), regression_rate=0.0, llm_calls_to_solution=8
 ```
 
+## Results: full 4-condition ablation (`sympy_swe`, seeds 0–2)
+
+`gpt-5.5` (Codex CLI, `reasoning_effort=low`), `pop_size=8`, `max_generations=6`.
+
+| Condition | Seeds solved | xo_att (mean) | xo_suc (mean) | LLM calls (mean) | regression_rate |
+|---|---|---|---|---|---|
+| `tdes_full` | 3/3 | 4.0 | 4.0 | 10.7 | 0.0 |
+| `tdes_no_crossover` | 3/3 | — | — | 8.0 | — |
+| `unconstrained_evo` | 3/3 | 2.0 | 2.0 | 8.0 | 0.0 |
+| `single_shot` | 0/3 | — | — | 2.0 | — |
+
+**Key observations:**
+
+- `tdes_full` fires crossover reliably (xo_att=4, xo_suc=4 every seed) with
+  zero regression — confirming that complementary-coverage crossover correctly
+  identifies and combines the two disjoint partial fixes.
+- `single_shot` fails 3/3 seeds, reaching only 5/9 (one bug fixed, not both) —
+  confirming that a single LLM call cannot produce a combined repair without
+  iterative feedback.
+- `tdes_no_crossover` also solves 3/3 seeds at the same LLM-call rate as
+  `tdes_full`. On this task, `gpt-5.5` with CEGIS feedback is strong enough to
+  fix both bugs in a single mutation step, so crossover does not reduce the
+  number of calls to solution.
+
+**Open question / known limitation:** The crossover advantage (speed to solution,
+LLM-call efficiency) is not demonstrated on `sympy_swe` because the mutator is
+already capable enough to produce a combined fix without it. Crossover fires and
+produces zero-regression children, but it doesn't arrive before mutation does.
+This is the make-or-break gap to close before the paper submission.
+
 ## Running
 
 ```bash
@@ -118,3 +148,34 @@ repair/
 
 **Do not modify base `tdes/*` files** — extend via subclass/composition, as this
 layer does.
+
+## TODO / open problems
+
+- [ ] **Close the crossover gap on `sympy_swe`**: the LLM mutator (`gpt-5.5` +
+  CEGIS) currently fixes both bugs in a single mutation step, so `tdes_no_crossover`
+  matches `tdes_full` in LLM-call efficiency. The fix is to reduce the explicitness
+  of the point-velocity stub so that single-step combined repairs are rare — forcing
+  crossover to be the only practical combining mechanism. Concretely: replace the
+  complete BFS pseudocode in the stub header with a high-level conceptual description
+  (matching the current blockmatrix stub style), re-run the ablation, and confirm
+  `tdes_full` solves in fewer LLM calls than `tdes_no_crossover`.
+
+- [ ] **Add a second benchmark task**: a single task with two co-occurring bugs is
+  a thin empirical base. Add at least one more multi-module SWE task (e.g. from
+  the `requests_swe` or `pipeline` tasks already scaffolded) and show the crossover
+  advantage holds across tasks.
+
+- [ ] **Scale to harder settings**: re-run with a weaker mutator (lower reasoning
+  budget, or a smaller model) where per-step combined fixes are rarer. This would
+  show that the crossover advantage scales inversely with mutator capability —
+  a principled claim for the paper.
+
+- [ ] **Wall-clock analysis**: add per-generation wall-clock comparisons to the
+  results table (already tracked in `wall_clock_seconds_per_gen`). Even if LLM
+  calls are equal, crossover's parallel evaluation of multiple children may reduce
+  wall time.
+
+- [ ] **Commit the buggy repo snapshots**: `tasks/sympy_task1/repo` and
+  `tasks/requests_swe/repo` are embedded git repositories excluded from this
+  commit. Convert to submodules or vendor a minimal frozen snapshot so the task
+  is self-contained and reproducible from a fresh clone.
