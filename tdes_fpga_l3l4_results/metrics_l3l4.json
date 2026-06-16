@@ -1,0 +1,848 @@
+[
+  {
+    "design": "fp_adder",
+    "condition": "best_of_30",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 30,
+    "escalated": false,
+    "trajectory": [
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 30,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "best_of_30",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 30,
+    "escalated": false,
+    "trajectory": [
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 30,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "best_of_30",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 30,
+    "escalated": false,
+    "trajectory": [
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 30,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "single_agent_30",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 6,
+    "escalated": false,
+    "trajectory": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 12,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "single_agent_30",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 6,
+    "escalated": false,
+    "trajectory": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 12,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "single_agent_30",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 6,
+    "escalated": false,
+    "trajectory": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 12,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_full",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_full",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_full",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_no_crossover",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 0,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_no_crossover",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 0,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_no_crossover",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 0,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_no_memory",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_no_memory",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_no_memory",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_scalar",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_scalar",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_adder",
+    "condition": "tdes_scalar",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "best_of_30",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 30,
+    "escalated": false,
+    "trajectory": [
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 30,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "best_of_30",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 30,
+    "escalated": false,
+    "trajectory": [
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 30,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "best_of_30",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 30,
+    "escalated": false,
+    "trajectory": [
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 30,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "single_agent_30",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 1,
+    "total_tests": 3,
+    "generations_run": 6,
+    "escalated": false,
+    "trajectory": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "crossover": null,
+    "llm_calls": 12,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "single_agent_30",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 6,
+    "escalated": false,
+    "trajectory": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "crossover": null,
+    "llm_calls": 12,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "single_agent_30",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 1,
+    "total_tests": 3,
+    "generations_run": 6,
+    "escalated": false,
+    "trajectory": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1
+    ],
+    "crossover": null,
+    "llm_calls": 10,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_full",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_full",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_full",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_no_crossover",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 0,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_no_crossover",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 0,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_no_crossover",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 1,
+    "total_tests": 3,
+    "generations_run": 3,
+    "escalated": true,
+    "trajectory": [
+      0,
+      1,
+      1
+    ],
+    "crossover": {
+      "pairs_considered": 0,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 6,
+    "calls_to_solve": null,
+    "module_first_solved": {
+      "fp_mult_special": 2
+    }
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_no_memory",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_no_memory",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_no_memory",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_scalar",
+    "seed": 0,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_scalar",
+    "seed": 1,
+    "solved": false,
+    "total_passes": 1,
+    "total_tests": 3,
+    "generations_run": 3,
+    "escalated": true,
+    "trajectory": [
+      0,
+      1,
+      1
+    ],
+    "crossover": {
+      "pairs_considered": 6,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 6,
+    "calls_to_solve": null,
+    "module_first_solved": {
+      "fp_mult_special": 2
+    }
+  },
+  {
+    "design": "fp_multiplier",
+    "condition": "tdes_scalar",
+    "seed": 2,
+    "solved": false,
+    "total_passes": 0,
+    "total_tests": 3,
+    "generations_run": 2,
+    "escalated": true,
+    "trajectory": [
+      0,
+      0
+    ],
+    "crossover": {
+      "pairs_considered": 3,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 3,
+    "calls_to_solve": null,
+    "module_first_solved": {}
+  }
+]
