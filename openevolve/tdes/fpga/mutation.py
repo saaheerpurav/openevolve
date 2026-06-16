@@ -47,6 +47,7 @@ class VerilogLLMMutator:
         feedback: List[FeedbackTuple],
         memory_text: str,
         generation: int,
+        positive_memory_text: str = "",
     ) -> Optional[MutationProposal]:
         source = candidate.modules[module]
         user = prompts.build_user_prompt(
@@ -56,6 +57,7 @@ class VerilogLLMMutator:
             memory_text=memory_text,
             diff_based=self.diff_based,
             generation=generation,
+            positive_memory_text=positive_memory_text,
         )
         response = await self.llm.generate_with_context(
             system_message=prompts.SYSTEM_MESSAGE_VERILOG,

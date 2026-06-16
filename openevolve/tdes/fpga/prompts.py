@@ -73,11 +73,17 @@ def build_user_prompt(
     memory_text: str,
     diff_based: bool,
     generation: int,
+    positive_memory_text: str = "",
 ) -> str:
     instructions = DIFF_INSTRUCTIONS if diff_based else REWRITE_INSTRUCTIONS
     memory_block = (
         f"\n# Previously attempted approaches that FAILED (avoid these)\n{memory_text}\n"
         if memory_text
+        else ""
+    )
+    positive_block = (
+        f"\n# Approaches that WORKED elsewhere in the population (consider these)\n{positive_memory_text}\n"
+        if positive_memory_text
         else ""
     )
     return f"""# Generation {generation}
@@ -90,7 +96,7 @@ def build_user_prompt(
 
 # Failing tests (description, failing input, error) — testbench source withheld
 {render_feedback(feedback)}
-{memory_block}
+{memory_block}{positive_block}
 # Task
 Edit the `{module_name}` module so it passes the failing tests above while \
 keeping the tests it already passes green. Produce synthesizable RTL.
