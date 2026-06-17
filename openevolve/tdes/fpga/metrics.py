@@ -29,6 +29,13 @@ class RunMetrics:
     calls_to_solve: Optional[int] = (
         None  # LLM calls consumed up to first all-pass (None if unsolved)
     )
+    # Optional external benchmark criterion. For auto-decomposed ArchXBench runs,
+    # generated unit tests are training scaffolds; the original system testbench
+    # is the external judge.
+    system_passes: Optional[int] = None
+    system_tests: Optional[int] = None
+    system_solved: Optional[bool] = None
+    calls_to_system_solve: Optional[int] = None
     # generation each module's primary test first passed (per-module solve timeline)
     module_first_solved: Dict[str, int] = field(default_factory=dict)
 
