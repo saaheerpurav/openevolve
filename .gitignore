@@ -49,6 +49,8 @@ tdes_fpga_output*/
 tdes_fpga_results*/
 tdes_combopt_results*/
 tdes_combopt_output*/
+tdes_repair_results*/
+.anthropic_key
 
 # TDES-FPGA: local EDA toolchain + cloned benchmark repos (not vendored)
 tools/
