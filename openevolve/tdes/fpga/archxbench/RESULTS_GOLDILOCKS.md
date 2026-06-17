@@ -1,6 +1,6 @@
 # TDES-FPGA Goldilocks Experiment Results
 
-**Date:** June 2026 | **Model:** claude-sonnet-4-6 | **Budget:** pop=5, gens=6
+**Date:** June 2026 | **Models:** claude-sonnet-4-6 + claude-haiku-4-5-20251001 | **Budget:** pop=5, gens=6
 
 ---
 
@@ -18,6 +18,20 @@
 problem completely — TDES climbs from 0→18→24 over 3 generations instead of stagnating
 at 1/3. However, crossover **never fires** (0 attempts across all seeds and conditions).
 Single-agent solves fp_multiplier_fine in 2–3 calls vs TDES's 6 calls.
+
+---
+
+## 1b. Haiku Results (fp_multiplier_fine only)
+
+| Condition | fp_multiplier_fine | Calls (med) | Notes |
+|---|---|---|---|
+| single_agent_30 | **0/3** (best: 14/24) | 8 | Never solved |
+| tdes_no_crossover | 1/3 | 6 | High variance |
+| tdes_full | **2/3** SOLVED | 6 | 0 crossover |
+
+**New finding:** TDES population diversity outperforms single-agent for Haiku (2/3 vs 0/3).
+Fine-grained CEGIS feedback helps Haiku make partial progress, but single-agent gets trapped
+in local optima; five independent mutation trajectories escape where one cannot.
 
 ---
 
@@ -65,7 +79,27 @@ is unambiguously better than one that passes 8.
 This confirms the diagnostic: coarse tests were not a TDES failure, they were a
 **benchmark design failure** that starved TDES of fitness signal.
 
-### 3.2 Why crossover still does not fire
+### 3.2 Population diversity beats single-agent for weak models
+
+With Haiku, single_agent_30 **never solves** fp_multiplier_fine (0/3) while tdes_full
+solves 2/3. With Sonnet, single_agent **always solves** in 2–3 calls. The crossover of
+model × method:
+
+| | Haiku (low cap.) | Sonnet (high cap.) |
+|---|---|---|
+| **single_agent** | 0/3 (12 calls) | 3/3 (2 calls) |
+| **tdes_full** | 2/3 (6 calls) | 2/2 (6 calls) |
+
+For Haiku, a single CEGIS trajectory gets trapped: the LLM partially improves one module
+then stalls at the same 1/24 or 7/24 regardless of further CEGIS feedback (12 calls, still
+stuck). Five independent trajectories (the TDES population) are more likely to include one
+that escapes the local optimum and solves a module completely in generation 2.
+
+**This is not a crossover benefit** — tdes_no_crossover shows a similar advantage over
+single_agent (1/3 vs 0/3). The benefit is **population diversity and independent restarts**
+inherent to any population-based method.
+
+### 3.3 Why crossover still does not fire
 
 Despite population union = 24 in gen-2, **xo_attempts = 0** across all seeds.
 
@@ -80,28 +114,40 @@ selection prunes to 5, the survivors are homogeneous at 18/24. When crossover ru
 at the start of gen-3, it sees 5 nearly-identical candidates with overlapping pass-sets
 and finds no complementary pairs.
 
-Root cause: **Sonnet's per-call capability is too high** for fp_multiplier. A single
-gen-1 mutation already tends to implement all 7 special cases or all 7 core cases
-correctly (P ≈ 30–50% per module). The 5-candidate population converges quickly to
-the same partial solution before crossover can combine different partial solutions.
-This places fp_multiplier with Sonnet **above** the Goldilocks ceiling.
+Root cause: **LLM pass-sets are nested, not complementary.** When given CEGIS feedback
+about mspec_inf_times_zero failing, an LLM tends to fix *all* Inf cases (mspec_inf_times_one
+AND mspec_inf_times_zero AND mspec_neg_inf_sq) simultaneously — not just the one reported.
+Better implementations are therefore strict supersets of weaker ones. Every generation,
+the selected population satisfies `union ≈ best_individual`. No pair ever has genuinely
+disjoint coverage.
 
-### 3.3 Single-agent dominates on efficiency
+Evidence: `population union ≈ best` holds consistently across all Haiku seeds:
+- Gen 2: best=13/24, union=13 (seeds that don't solve in 3 gens)
+- Gen 2: best=12/24, union=12 (tdes_no_crossover/seed=2)
 
-| Suite | Single-agent (calls) | TDES (calls) | Ratio |
-|---|---|---|---|
-| coarse (3 tests) | 2–5 | 6 (no solve) | ∞ better |
-| fine (24 tests) | **2–3** | 6 | **2–3× better** |
+The union only exceeds the best during the brief window between generating new candidates
+and running selection — discarded candidates contribute transient diversity that selection
+immediately prunes. By the time crossover runs on the selected population, diversity is gone.
 
-Single-agent CEGIS iterative repair solves fp_multiplier_fine in 2–3 calls because:
-1. The fine-grained test runner provides precise sub-case feedback to the LLM
-2. Sonnet reads the CEGIS feedback and fixes all remaining sub-cases in round 2
-3. No population overhead — every call targets the known failing cases
+**Structural conclusion: TDES crossover is a multi-module mechanism, not a sub-case
+mechanism.** It fires when *different modules* can be independently implemented — one
+candidate gets fp_mult_special right, another gets fp_mult_core right, both score equally
+in ranked selection (each passes one UNIT test = 1/3 total). Fine-grained tests within one
+module don't create this independence because LLMs implement modules holistically.
 
-The TDES advantage (diverse exploration, crossover synthesis) is irrelevant when one
-model can reliably solve an entire module in 1–2 shots.
+### 3.4 Single-agent vs TDES efficiency by model
 
-### 3.4 Coarse tdes_full underperforms tdes_no_crossover (note on variance)
+| Model | Suite | Single-agent | TDES | Winner |
+|---|---|---|---|---|
+| Sonnet | coarse | 3/3 (2–5 calls) | 0/2 (6 calls, stagnated) | single_agent |
+| Sonnet | fine | 3/3 (2–3 calls) | 2/2 (6 calls) | single_agent (3× faster) |
+| Haiku | fine | 0/3 (8 calls) | 2/3 (6 calls) | TDES |
+
+For strong models, single-agent iterative CEGIS is more efficient — fine-grained feedback
+allows one call to fix all remaining sub-cases. For weak models, the population provides
+independent restarts that single-agent can't replicate.
+
+### 3.5 Coarse tdes_full underperforms tdes_no_crossover (note on variance)
 
 On the coarse suite, tdes_full stagnated (0/2 real seeds) while tdes_no_crossover
 solved (2/2 real seeds) with the same call budget. This appears paradoxical since
@@ -117,11 +163,16 @@ With 2 real seeds per condition this difference is not statistically meaningful.
 
 Three regimes now have empirical data:
 
-| Regime | Example | P(module solve/call) | Gradient | Crossover fires | Winner |
-|---|---|---|---|---|---|
-| Below threshold | Level 3, Haiku | ≈ 7% | No (coarse) / partial (fine) | Never | Stagnation / single-agent |
-| Goldilocks | Level 1b-2, Haiku | ≈ 30–70% | Yes | Yes (18/18 attempts) | TDES |
-| Above ceiling | Level 3, Sonnet | ≈ 50–100% | Yes (fine only) | Never | Single-agent |
+| Regime | Example | Test granularity | Crossover fires | Winner |
+|---|---|---|---|---|
+| Coarse tests | Any design, coarse suite | 3 tests | Never (no gradient) | Stagnation (coarse) |
+| Multi-module Goldilocks | L1b-2 hier, Haiku | Module-level UNIT | Yes (18/18) | TDES crossover |
+| Fine tests, strong model | L3 fp_mult, Sonnet | 24 sub-case tests | Never (nested sets) | Single-agent (2 calls) |
+| Fine tests, weak model | L3 fp_mult, Haiku | 24 sub-case tests | Never (nested sets) | TDES population diversity |
+
+The Goldilocks regime for crossover requires **module-level** test decomposition where
+each module is independently solvable but non-trivial — not sub-case decomposition within
+a single module.
 
 The Goldilocks window (30–70%) is where both conditions hold:
 1. P(module solve/call) high enough that gen-1 produces diverse partial solutions
