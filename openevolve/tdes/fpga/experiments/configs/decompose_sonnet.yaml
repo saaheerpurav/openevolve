@@ -1,0 +1,33 @@
+# TDES-FPGA decompose-then-evolve config: Sonnet 4.6 on the Level-4
+# pipelined FP multiplier decomposed into 5 sub-modules.
+#
+# Tuning rationale: 5 modules means larger population needed to get
+# complementary coverage.  Pop 6 × 8 gens gives each module ~48
+# mutation attempts (6 candidates × 8 gens); with P(correct|attempt) ~0.4
+# per sub-module, P(at least one correct per module) ~1-(0.6)^48 ≈ 1.0.
+#
+#   export ANTHROPIC_API_KEY=$(tr -d '[:space:]' < .anthropic_key)
+#   python -m openevolve.tdes.fpga.archxbench.run_decompose \
+#       --config openevolve/tdes/fpga/experiments/configs/decompose_sonnet.yaml \
+#       --seeds 0 1 2 --out tdes_fpga_decompose_results
+
+tdes:
+  pop_size: 6
+  max_generations: 8
+  window_size: 5
+  diff_based: false
+  suite_timeout: 120
+  synth_target: ice40
+  output_dir: tdes_fpga_decompose_results/runs
+  random_seed: 42
+
+llm:
+  api_base: "https://api.anthropic.com/v1/"
+  api_key: "${ANTHROPIC_API_KEY}"
+  temperature: 0.7
+  max_tokens: 6144
+  timeout: 180
+  retries: 3
+  models:
+    - name: "claude-sonnet-4-6"
+      weight: 1.0

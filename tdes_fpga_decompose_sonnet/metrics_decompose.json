@@ -1,0 +1,250 @@
+[
+  {
+    "design": "fp_mult_pipeline",
+    "condition": "tdes_full",
+    "seed": 0,
+    "solved": true,
+    "total_passes": 59,
+    "total_tests": 59,
+    "generations_run": 3,
+    "escalated": false,
+    "trajectory": [
+      2,
+      37,
+      59
+    ],
+    "crossover": {
+      "pairs_considered": 6,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 21,
+    "calls_to_solve": 21,
+    "module_first_solved": {
+      "fpm_multiply": 1,
+      "fpm_special": 1,
+      "fpm_unpack": 2,
+      "fpm_round_pack": 2,
+      "fpm_normalize": 2
+    }
+  },
+  {
+    "design": "fp_mult_pipeline",
+    "condition": "tdes_full",
+    "seed": 1,
+    "solved": true,
+    "total_passes": 59,
+    "total_tests": 59,
+    "generations_run": 3,
+    "escalated": true,
+    "trajectory": [
+      2,
+      58,
+      59
+    ],
+    "crossover": {
+      "pairs_considered": 6,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 18,
+    "calls_to_solve": 18,
+    "module_first_solved": {
+      "fpm_multiply": 1,
+      "fpm_special": 1,
+      "fpm_unpack": 2,
+      "fpm_normalize": 2,
+      "fpm_round_pack": 2
+    }
+  },
+  {
+    "design": "fp_mult_pipeline",
+    "condition": "tdes_full",
+    "seed": 2,
+    "solved": true,
+    "total_passes": 59,
+    "total_tests": 59,
+    "generations_run": 3,
+    "escalated": true,
+    "trajectory": [
+      2,
+      58,
+      59
+    ],
+    "crossover": {
+      "pairs_considered": 6,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 18,
+    "calls_to_solve": 18,
+    "module_first_solved": {
+      "fpm_multiply": 1,
+      "fpm_special": 1,
+      "fpm_unpack": 2,
+      "fpm_normalize": 2,
+      "fpm_round_pack": 2
+    }
+  },
+  {
+    "design": "fp_mult_pipeline",
+    "condition": "tdes_no_crossover",
+    "seed": 0,
+    "solved": true,
+    "total_passes": 59,
+    "total_tests": 59,
+    "generations_run": 2,
+    "escalated": false,
+    "trajectory": [
+      2,
+      59
+    ],
+    "crossover": {
+      "pairs_considered": 0,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 15,
+    "calls_to_solve": 15,
+    "module_first_solved": {
+      "fpm_multiply": 1,
+      "fpm_special": 1,
+      "fpm_unpack": 2,
+      "fpm_normalize": 2,
+      "fpm_round_pack": 2
+    }
+  },
+  {
+    "design": "fp_mult_pipeline",
+    "condition": "tdes_no_crossover",
+    "seed": 1,
+    "solved": true,
+    "total_passes": 59,
+    "total_tests": 59,
+    "generations_run": 3,
+    "escalated": true,
+    "trajectory": [
+      2,
+      58,
+      59
+    ],
+    "crossover": {
+      "pairs_considered": 0,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 18,
+    "calls_to_solve": 18,
+    "module_first_solved": {
+      "fpm_multiply": 1,
+      "fpm_special": 1,
+      "fpm_unpack": 2,
+      "fpm_normalize": 2,
+      "fpm_round_pack": 2
+    }
+  },
+  {
+    "design": "fp_mult_pipeline",
+    "condition": "tdes_no_crossover",
+    "seed": 2,
+    "solved": true,
+    "total_passes": 59,
+    "total_tests": 59,
+    "generations_run": 3,
+    "escalated": true,
+    "trajectory": [
+      2,
+      58,
+      59
+    ],
+    "crossover": {
+      "pairs_considered": 0,
+      "attempts": 0,
+      "accepted": 0,
+      "attempt_rate": 0.0,
+      "success_rate": 0.0,
+      "mean_lift": 0.0
+    },
+    "llm_calls": 18,
+    "calls_to_solve": 18,
+    "module_first_solved": {
+      "fpm_multiply": 1,
+      "fpm_special": 1,
+      "fpm_unpack": 2,
+      "fpm_normalize": 2,
+      "fpm_round_pack": 2
+    }
+  },
+  {
+    "design": "fp_mult_pipeline",
+    "condition": "single_agent_30",
+    "seed": 0,
+    "solved": true,
+    "total_passes": 59,
+    "total_tests": 59,
+    "generations_run": 2,
+    "escalated": false,
+    "trajectory": [
+      2,
+      58,
+      59
+    ],
+    "crossover": null,
+    "llm_calls": 6,
+    "calls_to_solve": 6,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_mult_pipeline",
+    "condition": "single_agent_30",
+    "seed": 1,
+    "solved": true,
+    "total_passes": 59,
+    "total_tests": 59,
+    "generations_run": 2,
+    "escalated": false,
+    "trajectory": [
+      2,
+      58,
+      59
+    ],
+    "crossover": null,
+    "llm_calls": 6,
+    "calls_to_solve": 6,
+    "module_first_solved": {}
+  },
+  {
+    "design": "fp_mult_pipeline",
+    "condition": "single_agent_30",
+    "seed": 2,
+    "solved": true,
+    "total_passes": 59,
+    "total_tests": 59,
+    "generations_run": 2,
+    "escalated": false,
+    "trajectory": [
+      2,
+      58,
+      59
+    ],
+    "crossover": null,
+    "llm_calls": 6,
+    "calls_to_solve": 6,
+    "module_first_solved": {}
+  }
+]

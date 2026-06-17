@@ -1,0 +1,236 @@
+{
+  "reason": "stagnation",
+  "generation": 3,
+  "best_candidate": {
+    "id": "4d1a6c05cdd7",
+    "score_key": [
+      8,
+      0,
+      29
+    ],
+    "summary": "system 8, integration 0, unit 29 (37/59 total)",
+    "modules": {
+      "fpm_unpack": "`timescale 1ns/1ps\nmodule fpm_unpack(\n    input  [31:0] a,\n    input  [31:0] b,\n    output        a_sign,\n    output [7:0]  a_exp,\n    output [23:0] a_mant,\n    output        b_sign,\n    output [7:0]  b_exp,\n    output [23:0] b_mant,\n    output        a_is_nan,\n    output        a_is_inf,\n    output        a_is_zero,\n    output        b_is_nan,\n    output        b_is_inf,\n    output        b_is_zero\n);\n\n    // Unpack channel A\n    wire a_sign_bit = a[31];\n    wire [7:0] a_exp_bits = a[30:23];\n    wire [22:0] a_mant_bits = a[22:0];\n    \n    // For normalized numbers (exp != 0), add implicit leading 1\n    // For denormals (exp == 0), no implicit 1\n    wire [23:0] a_mant_with_implicit = (a_exp_bits == 8'b0) ? \n                                        {1'b0, a_mant_bits} : \n                                        {1'b1, a_mant_bits};\n    \n    // Detect special cases for A\n    wire a_is_zero_internal = (a_exp_bits == 8'b0) && (a_mant_bits == 23'b0);\n    wire a_is_inf_internal = (a_exp_bits == 8'hFF) && (a_mant_bits == 23'b0);\n    wire a_is_nan_internal = (a_exp_bits == 8'hFF) && (a_mant_bits != 23'b0);\n    \n    // Unpack channel B\n    wire b_sign_bit = b[31];\n    wire [7:0] b_exp_bits = b[30:23];\n    wire [22:0] b_mant_bits = b[22:0];\n    \n    // For normalized numbers (exp != 0), add implicit leading 1\n    // For denormals (exp == 0), no implicit 1\n    wire [23:0] b_mant_with_implicit = (b_exp_bits == 8'b0) ? \n                                        {1'b0, b_mant_bits} : \n                                        {1'b1, b_mant_bits};\n    \n    // Detect special cases for B\n    wire b_is_zero_internal = (b_exp_bits == 8'b0) && (b_mant_bits == 23'b0);\n    wire b_is_inf_internal = (b_exp_bits == 8'hFF) && (b_mant_bits == 23'b0);\n    wire b_is_nan_internal = (b_exp_bits == 8'hFF) && (b_mant_bits != 23'b0);\n    \n    // Assign outputs for channel A\n    assign a_sign = a_sign_bit;\n    assign a_exp = a_exp_bits;\n    assign a_mant = a_mant_with_implicit;\n    assign a_is_nan = a_is_nan_internal;\n    assign a_is_inf = a_is_inf_internal;\n    assign a_is_zero = a_is_zero_internal;\n    \n    // Assign outputs for channel B\n    assign b_sign = b_sign_bit;\n    assign b_exp = b_exp_bits;\n    assign b_mant = b_mant_with_implicit;\n    assign b_is_nan = b_is_nan_internal;\n    assign b_is_inf = b_is_inf_internal;\n    assign b_is_zero = b_is_zero_internal;\n\nendmodule",
+      "fpm_multiply": "`timescale 1ns/1ps\nmodule fpm_multiply(\n    input         a_sign,\n    input  [7:0]  a_exp,\n    input  [23:0] a_mant,\n    input         b_sign,\n    input  [7:0]  b_exp,\n    input  [23:0] b_mant,\n    output        result_sign,\n    output [47:0] product,\n    output [9:0]  raw_exp\n);\n    // Sign is XOR of input signs\n    assign result_sign = a_sign ^ b_sign;\n    \n    // Product is multiplication of mantissas (24-bit \u00d7 24-bit = 48-bit)\n    assign product = a_mant * b_mant;\n    \n    // Raw exponent is sum of exponents minus the bias (127)\n    // Using 10 bits to handle intermediate sum (8+8=16 bits, minus 7 bits bias = 9 bits, but need headroom)\n    assign raw_exp = a_exp + b_exp - 10'd127;\nendmodule",
+      "fpm_normalize": "`timescale 1ns/1ps\nmodule fpm_normalize(\n    input  [47:0] product,\n    input  [9:0]  raw_exp,\n    output [22:0] norm_frac,\n    output [9:0]  norm_exp,\n    output        guard,\n    output        sticky\n);\n    assign norm_frac = 0;\n    assign norm_exp  = 0;\n    assign guard     = 0;\n    assign sticky    = 0;\nendmodule\n",
+      "fpm_round_pack": "`timescale 1ns/1ps\nmodule fpm_round_pack(\n    input         sign,\n    input  [22:0] norm_frac,\n    input  [9:0]  norm_exp,\n    input         guard,\n    input         sticky,\n    output reg [31:0] result,\n    output reg        overflow,\n    output reg        underflow\n);\n    wire [22:0] rounded_frac;\n    wire [9:0]  rounded_exp;\n    wire        round_up;\n    \n    // Determine if we should round up\n    // Round to nearest, ties to even:\n    // - Round up if guard=1 and (sticky=1 or frac[0]=1)\n    assign round_up = guard & (sticky | norm_frac[0]);\n    \n    // Add rounding bit to fraction\n    wire [23:0] frac_plus_round = {1'b0, norm_frac} + (round_up ? 24'b1 : 24'b0);\n    \n    // Check if rounding caused overflow in fraction (fraction became 1.0)\n    wire frac_overflow = frac_plus_round[23];\n    \n    // If fraction overflowed, increment exponent and clear fraction\n    assign rounded_frac = frac_overflow ? 23'b0 : frac_plus_round[22:0];\n    assign rounded_exp = frac_overflow ? (norm_exp + 1'b1) : norm_exp;\n    \n    always @(*) begin\n        overflow = 1'b0;\n        underflow = 1'b0;\n        \n        // Check for special cases\n        if (rounded_exp >= 10'd255) begin\n            // Overflow to infinity\n            overflow = 1'b1;\n            result = {sign, 8'b11111111, 23'b0};\n        end\n        else if (rounded_exp == 10'b0) begin\n            // Underflow to zero\n            underflow = 1'b1;\n            result = {sign, 31'b0};\n        end\n        else begin\n            // Normal case: pack into IEEE 754 format\n            result = {sign, rounded_exp[7:0], rounded_frac};\n        end\n    end\nendmodule",
+      "fpm_special": "`timescale 1ns/1ps\nmodule fpm_special(\n    input         a_is_nan,\n    input         a_is_inf,\n    input         a_is_zero,\n    input         b_is_nan,\n    input         b_is_inf,\n    input         b_is_zero,\n    input         result_sign,\n    output        is_special,\n    output reg [31:0] special_result\n);\n    \n    wire is_nan;\n    wire is_inf_times_zero;\n    wire is_inf;\n    wire is_zero;\n    \n    // NaN if either operand is NaN\n    assign is_nan = a_is_nan | b_is_nan;\n    \n    // Inf \u00d7 0 or 0 \u00d7 Inf produces NaN\n    assign is_inf_times_zero = (a_is_inf & b_is_zero) | (a_is_zero & b_is_inf);\n    \n    // Infinity result (but not if it's inf*0 which is NaN)\n    assign is_inf = (a_is_inf | b_is_inf) & ~is_inf_times_zero;\n    \n    // Zero result (but not if it involves inf*0 which is NaN)\n    assign is_zero = (a_is_zero | b_is_zero) & ~is_inf_times_zero;\n    \n    // Special case if any of the above apply\n    assign is_special = is_nan | is_inf_times_zero | is_inf | is_zero;\n    \n    always @(*) begin\n        if (is_nan | is_inf_times_zero) begin\n            // NaN: 0x7FC00000 (quiet NaN with sign bit 0)\n            special_result = 32'h7FC00000;\n        end\n        else if (is_inf) begin\n            // Infinity: sign bit determines +Inf or -Inf\n            special_result = {result_sign, 31'h7F800000};\n        end\n        else if (is_zero) begin\n            // Zero: sign bit determines +0 or -0\n            special_result = {result_sign, 31'h00000000};\n        end\n        else begin\n            special_result = 32'h00000000;\n        end\n    end\n    \nendmodule"
+    }
+  },
+  "failing_tests": [
+    {
+      "test_id": "norm_1x1",
+      "level": "UNIT",
+      "module": "fpm_normalize",
+      "description": "fpm_normalize: product from 1.0\u00d71.0 (bit47=0)",
+      "failing_input": "400000000000,e127",
+      "error": "expected f0,e127,g0,s0, got f000000,e0,g0,s0"
+    },
+    {
+      "test_id": "norm_1p5x2",
+      "level": "UNIT",
+      "module": "fpm_normalize",
+      "description": "fpm_normalize: product from 1.5\u00d72.0 frac=400000",
+      "failing_input": "600000000000,e128",
+      "error": "expected f400000,e128, got f000000,e0"
+    },
+    {
+      "test_id": "norm_msb_set",
+      "level": "UNIT",
+      "module": "fpm_normalize",
+      "description": "fpm_normalize: bit47=1 \u2192 exp+1",
+      "failing_input": "C00000000000,e128",
+      "error": "expected e129, got e0"
+    },
+    {
+      "test_id": "norm_guard_sticky",
+      "level": "UNIT",
+      "module": "fpm_normalize",
+      "description": "fpm_normalize: guard=1, sticky=1",
+      "failing_input": "400000400001",
+      "error": "expected g1,s1, got g0,s0"
+    },
+    {
+      "test_id": "norm_guard_only",
+      "level": "UNIT",
+      "module": "fpm_normalize",
+      "description": "fpm_normalize: guard=1, sticky=0",
+      "failing_input": "400000400000",
+      "error": "expected g1,s0, got g0,s0"
+    },
+    {
+      "test_id": "sys_1x2",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 1.0\u00d72.0 = 2.0",
+      "failing_input": "a=3f800000,b=40000000",
+      "error": "expected 40000000, got 00000000"
+    },
+    {
+      "test_id": "sys_2x3",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 2.0\u00d73.0 = 6.0",
+      "failing_input": "a=40000000,b=40400000",
+      "error": "expected 40c00000, got 00000000"
+    },
+    {
+      "test_id": "sys_0p5x0p5",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 0.5\u00d70.5 = 0.25",
+      "failing_input": "a=3f000000,b=3f000000",
+      "error": "expected 3e800000, got 00000000"
+    },
+    {
+      "test_id": "sys_4x0p25",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 4.0\u00d70.25 = 1.0",
+      "failing_input": "a=40800000,b=3e800000",
+      "error": "expected 3f800000, got 00000000"
+    },
+    {
+      "test_id": "sys_neg1x2",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: -1.0\u00d72.0 = -2.0",
+      "failing_input": "a=bf800000,b=40000000",
+      "error": "expected c0000000, got 80000000"
+    },
+    {
+      "test_id": "sys_negxneg",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: -1.0\u00d7-2.0 = 2.0",
+      "failing_input": "a=bf800000,b=c0000000",
+      "error": "expected 40000000, got 00000000"
+    },
+    {
+      "test_id": "sys_1xneg2",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 1.0\u00d7-2.0 = -2.0",
+      "failing_input": "a=3f800000,b=c0000000",
+      "error": "expected c0000000, got 80000000"
+    },
+    {
+      "test_id": "sys_neg1xneg1",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: -1.0\u00d7-1.0 = 1.0",
+      "failing_input": "a=bf800000,b=bf800000",
+      "error": "expected 3f800000, got 00000000"
+    },
+    {
+      "test_id": "sys_32x1",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 32.0\u00d71.0 = 32.0",
+      "failing_input": "a=42000000,b=3f800000",
+      "error": "expected 42000000, got 00000000"
+    },
+    {
+      "test_id": "sys_large_sm",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: large\u00d7small = 1.0",
+      "failing_input": "a=47000000,b=38000000",
+      "error": "expected 3f800000, got 00000000"
+    },
+    {
+      "test_id": "sys_sm_large",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: small\u00d7large = 0.5",
+      "failing_input": "a=33800000,b=4b000000",
+      "error": "expected 3f000000, got 00000000"
+    },
+    {
+      "test_id": "sys_denorm",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: min_normal\u00d71.0 = min_normal",
+      "failing_input": "a=00800000,b=3f800000",
+      "error": "expected 00800000, got 00000000"
+    },
+    {
+      "test_id": "sys_overflow",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: large\u00d7large = +Inf (overflow)",
+      "failing_input": "a=7f000000,b=7f000000",
+      "error": "expected 7f800000, got 00000000"
+    },
+    {
+      "test_id": "sys_tiny_sq",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: tiny\u00b2",
+      "failing_input": "a=33800000,b=33800000",
+      "error": "expected 27800000, got 00000000"
+    },
+    {
+      "test_id": "sys_third_x2",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: \u2153\u00d72 = \u2154 (rounding)",
+      "failing_input": "a=3eaaaaab,b=40000000",
+      "error": "expected 3f2aaaab, got 00000000"
+    },
+    {
+      "test_id": "sys_1x1",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 1.0\u00d71.0 = 1.0",
+      "failing_input": "a=3f800000,b=3f800000",
+      "error": "expected 3f800000, got 00000000"
+    },
+    {
+      "test_id": "sys_2x2",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 2.0\u00d72.0 = 4.0",
+      "failing_input": "a=40000000,b=40000000",
+      "error": "expected 40800000, got 00000000"
+    }
+  ],
+  "negative_memory": {
+    "fpm_normalize": [
+      {
+        "generation": 2,
+        "approach": "Implemented normalization by detecting overflow at bit 47, shifting right and incrementing exponent when overflow is present, then extracting the 23-bit fraction from bits 46:24, guard bit from bit 23, and sticky as the OR of remaining bits 22:0.",
+        "failure_mode": "regressed test (expected 00000000, got 7f800000)",
+        "triggering_input": "a=00800000,b=00800000"
+      },
+      {
+        "generation": 2,
+        "approach": "Implemented normalization by detecting overflow at bit 47; when overflow exists, shift the fraction right by 1 bit and increment exponent; extract guard and sticky bits from the appropriate positions based on overflow state.",
+        "failure_mode": "regressed test (expected 00000000, got 7f800000)",
+        "triggering_input": "a=00800000,b=00800000"
+      },
+      {
+        "generation": 2,
+        "approach": "Detect overflow at bit 47; when set, shift fraction right by 1 bit (from [47:25]), increment exponent, and extract guard from bit[24] and sticky from OR of bits[23:0]; when not set, extract fraction from bits[46:24], guard from bit[23], and sticky from OR of bits[22:0].",
+        "failure_mode": "regressed test (expected 00000000, got 7f800000)",
+        "triggering_input": "a=00800000,b=00800000"
+      }
+    ],
+    "fpm_multiply": [
+      {
+        "generation": 1,
+        "approach": "Implement IEEE 754 floating-point multiplication by computing result_sign as XOR of input signs, product as 24\u00d724-bit multiplication, and raw_exp as sum of exponents minus bias (127) to account for double-biasing.",
+        "failure_mode": "regressed test (expected 00000000, got 7f800000)",
+        "triggering_input": "a=00800000,b=00800000"
+      }
+    ],
+    "fpm_round_pack": [
+      {
+        "generation": 2,
+        "approach": "Fixed the fraction overflow detection by using a 24-bit temporary variable to properly detect when rounding causes the 23-bit fraction to overflow (bit 23 set), rather than comparing a 23-bit value to a 24-bit constant which caused width mismatch issues.",
+        "failure_mode": "regressed test (compilation failed: /tmp/tdes_fpga_v5zst_a8/fpm_round_pack.v:1: syntax error\nI give up.)",
+        "triggering_input": "compile-time"
+      }
+    ]
+  }
+}

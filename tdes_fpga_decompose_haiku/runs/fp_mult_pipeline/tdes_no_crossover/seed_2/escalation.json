@@ -1,0 +1,66 @@
+{
+  "reason": "stagnation",
+  "generation": 5,
+  "best_candidate": {
+    "id": "de175918175e",
+    "score_key": [
+      24,
+      0,
+      34
+    ],
+    "summary": "system 24, integration 0, unit 34 (58/59 total)",
+    "modules": {
+      "fpm_unpack": "`timescale 1ns/1ps\nmodule fpm_unpack(\n    input  [31:0] a,\n    input  [31:0] b,\n    output        a_sign,\n    output [7:0]  a_exp,\n    output [23:0] a_mant,\n    output        b_sign,\n    output [7:0]  b_exp,\n    output [23:0] b_mant,\n    output        a_is_nan,\n    output        a_is_inf,\n    output        a_is_zero,\n    output        b_is_nan,\n    output        b_is_inf,\n    output        b_is_zero\n);\n    // Unpack a\n    wire a_sign_bit = a[31];\n    wire [7:0] a_exp_bits = a[30:23];\n    wire [22:0] a_mant_bits = a[22:0];\n    \n    // Unpack b\n    wire b_sign_bit = b[31];\n    wire [7:0] b_exp_bits = b[30:23];\n    wire [22:0] b_mant_bits = b[22:0];\n    \n    // Detect special cases for a\n    wire a_is_zero_int = (a_exp_bits == 8'b0) && (a_mant_bits == 23'b0);\n    wire a_is_denormal = (a_exp_bits == 8'b0) && (a_mant_bits != 23'b0);\n    wire a_is_inf_int = (a_exp_bits == 8'hFF) && (a_mant_bits == 23'b0);\n    wire a_is_nan_int = (a_exp_bits == 8'hFF) && (a_mant_bits != 23'b0);\n    \n    // Detect special cases for b\n    wire b_is_zero_int = (b_exp_bits == 8'b0) && (b_mant_bits == 23'b0);\n    wire b_is_denormal = (b_exp_bits == 8'b0) && (b_mant_bits != 23'b0);\n    wire b_is_inf_int = (b_exp_bits == 8'hFF) && (b_mant_bits == 23'b0);\n    wire b_is_nan_int = (b_exp_bits == 8'hFF) && (b_mant_bits != 23'b0);\n    \n    // Mantissa with implicit 1 for normalized numbers\n    wire [23:0] a_mant_int = (a_is_denormal || a_is_zero_int) ? \n                             {1'b0, a_mant_bits} : \n                             {1'b1, a_mant_bits};\n    \n    wire [23:0] b_mant_int = (b_is_denormal || b_is_zero_int) ? \n                             {1'b0, b_mant_bits} : \n                             {1'b1, b_mant_bits};\n    \n    // Assign outputs for a\n    assign a_sign = a_sign_bit;\n    assign a_exp = a_exp_bits;\n    assign a_mant = a_mant_int;\n    assign a_is_zero = a_is_zero_int;\n    assign a_is_inf = a_is_inf_int;\n    assign a_is_nan = a_is_nan_int;\n    \n    // Assign outputs for b\n    assign b_sign = b_sign_bit;\n    assign b_exp = b_exp_bits;\n    assign b_mant = b_mant_int;\n    assign b_is_zero = b_is_zero_int;\n    assign b_is_inf = b_is_inf_int;\n    assign b_is_nan = b_is_nan_int;\n    \nendmodule",
+      "fpm_multiply": "`timescale 1ns/1ps\nmodule fpm_multiply(\n    input         a_sign,\n    input  [7:0]  a_exp,\n    input  [23:0] a_mant,\n    input         b_sign,\n    input  [7:0]  b_exp,\n    input  [23:0] b_mant,\n    output        result_sign,\n    output [47:0] product,\n    output [9:0]  raw_exp\n);\n    // Sign is XOR of input signs\n    assign result_sign = a_sign ^ b_sign;\n    \n    // Product is the 48-bit result of multiplying two 24-bit mantissas\n    assign product = a_mant * b_mant;\n    \n    // Raw exponent: sum of exponents minus bias (127 for single precision)\n    // Result uses 10 bits to accommodate exponent range (0-254 gives 0-381)\n    assign raw_exp = a_exp + b_exp - 8'd127;\n    \nendmodule",
+      "fpm_normalize": "`timescale 1ns/1ps\nmodule fpm_normalize(\n    input  [47:0] product,\n    input  [9:0]  raw_exp,\n    output [22:0] norm_frac,\n    output [9:0]  norm_exp,\n    output        guard,\n    output        sticky\n);\n    wire [47:0] shifted;\n    wire [4:0] shift_amount;\n    wire shift_right;\n    \n    // Check if we need to shift right (bit 47 is set)\n    assign shift_right = product[47];\n    \n    // Find position of leading 1 for left shift case\n    // If bit46=1, shift_amount=1; if bit45=1, shift_amount=2; etc.\n    assign shift_amount = shift_right ? 5'd0 :\n                          product[46] ? 5'd1 :\n                          product[45] ? 5'd2 :\n                          product[44] ? 5'd3 :\n                          product[43] ? 5'd4 :\n                          product[42] ? 5'd5 :\n                          product[41] ? 5'd6 :\n                          product[40] ? 5'd7 :\n                          5'd0;\n    \n    // Shift: right by 1 if bit47=1, else left by shift_amount\n    assign shifted = shift_right ? (product >> 1) : (product << shift_amount);\n    \n    // Extract 23-bit fraction from bits [46:24]\n    assign norm_frac = shifted[46:24];\n    \n    // Guard bit is bit 23\n    assign guard = shifted[23];\n    \n    // Sticky bit is OR of bits [22:0]\n    assign sticky = |shifted[22:0];\n    \n    // Exponent adjustment: \n    // If shift_right: increment by 1 (we shifted right, so exponent increases)\n    // Else: no change (leading 1 is already in implicit position)\n    assign norm_exp = shift_right ? (raw_exp + 1) : raw_exp;\n    \nendmodule",
+      "fpm_round_pack": "`timescale 1ns/1ps\nmodule fpm_round_pack(\n    input         sign,\n    input  [22:0] norm_frac,\n    input  [9:0]  norm_exp,\n    input         guard,\n    input         sticky,\n    output reg [31:0] result,\n    output reg        overflow,\n    output reg        underflow\n);\n\n    always @(*) begin\n        reg [23:0] rounded_frac;\n        reg [9:0] final_exp;\n        reg should_round_up;\n        \n        overflow = 0;\n        underflow = 0;\n        \n        // Determine if we should round up\n        // Round to nearest even: round up if guard=1 and (sticky=1 or frac[0]=1)\n        should_round_up = guard & (sticky | norm_frac[0]);\n        \n        // Apply rounding to fraction\n        rounded_frac = {1'b0, norm_frac};\n        if (should_round_up) begin\n            rounded_frac = rounded_frac + 1;\n        end\n        \n        // Check if rounding overflowed the fraction (24-bit value becomes 24'h1000000)\n        if (rounded_frac[23]) begin\n            // Fraction overflowed, increment exponent\n            final_exp = norm_exp + 1;\n        end else begin\n            final_exp = norm_exp;\n        end\n        \n        // Handle special cases\n        if (final_exp == 10'h0) begin\n            // Underflow: return signed zero\n            underflow = 1;\n            result = {sign, 31'h0};\n        end else if (final_exp >= 10'hFF) begin\n            // Overflow: return signed infinity\n            overflow = 1;\n            result = {sign, 8'hFF, 23'h0};\n        end else begin\n            // Normal case: pack into IEEE 754 format\n            // Sign (1 bit) | Exponent (8 bits) | Fraction (23 bits)\n            result = {sign, final_exp[7:0], rounded_frac[22:0]};\n        end\n    end\n\nendmodule",
+      "fpm_special": "`timescale 1ns/1ps\nmodule fpm_special(\n    input         a_is_nan,\n    input         a_is_inf,\n    input         a_is_zero,\n    input         b_is_nan,\n    input         b_is_inf,\n    input         b_is_zero,\n    input         result_sign,\n    output        is_special,\n    output reg [31:0] special_result\n);\n    \n    // is_special is 1 if any operand is special (NaN, Inf, or Zero)\n    assign is_special = a_is_nan | a_is_inf | a_is_zero | b_is_nan | b_is_inf | b_is_zero;\n    \n    always @(*) begin\n        if (a_is_nan | b_is_nan) begin\n            // NaN \u00d7 anything \u2192 NaN\n            special_result = 32'h7FC00000;\n        end\n        else if ((a_is_inf & b_is_zero) | (a_is_zero & b_is_inf)) begin\n            // Inf \u00d7 0 or 0 \u00d7 Inf \u2192 NaN\n            special_result = 32'h7FC00000;\n        end\n        else if (a_is_inf | b_is_inf) begin\n            // Inf \u00d7 normal or Inf \u00d7 Inf \u2192 Inf with sign\n            special_result = result_sign ? 32'hFF800000 : 32'h7F800000;\n        end\n        else if (a_is_zero | b_is_zero) begin\n            // 0 \u00d7 anything \u2192 signed zero\n            special_result = result_sign ? 32'h80000000 : 32'h00000000;\n        end\n        else begin\n            special_result = 32'h00000000;\n        end\n    end\n    \nendmodule"
+    }
+  },
+  "failing_tests": [
+    {
+      "test_id": "sys_underflow",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: tiny\u00d7tiny = 0 (underflow)",
+      "failing_input": "a=00800000,b=00800000",
+      "error": "expected 00000000, got 7f800000"
+    }
+  ],
+  "negative_memory": {
+    "fpm_round_pack": [
+      {
+        "generation": 4,
+        "approach": "Changed overflow detection threshold from `>= 10'hFF` to `>= 10'h100` to properly detect when a 10-bit exponent would overflow an 8-bit field, fixing the case where denormalized/underflowed results were incorrectly classified as infinity.",
+        "failure_mode": "regressed test (expected 7F800000,ov=1, got 7f800000,ov0)",
+        "triggering_input": "e255"
+      },
+      {
+        "generation": 4,
+        "approach": "Changed underflow detection from `norm_exp == 10'b0` to `norm_exp < 10'd1` to catch all exponents that are too small to represent in the normal range, fixing the case where tiny\u00d7tiny incorrectly returned infinity instead of zero.",
+        "failure_mode": "regressed test (compilation failed: /tmp/tdes_fpga_p4nkbq_c/fpm_round_pack.v:1: syntax error\nI give up.)",
+        "triggering_input": "compile-time"
+      },
+      {
+        "generation": 4,
+        "approach": "Added +1 to the exponent during initial assignment to compensate for the upstream multiplier's exponent representation, ensuring the packed IEEE 754 result has the correct exponent bias.",
+        "failure_mode": "regressed test (compilation failed: /tmp/tdes_fpga_s7xku032/fpm_round_pack.v:1: syntax error\nI give up.)",
+        "triggering_input": "compile-time"
+      }
+    ],
+    "fpm_normalize": [
+      {
+        "generation": 3,
+        "approach": "Fixed exponent calculation from `raw_exp - shift_amount + (product[47] ? 1 : 0)` to `raw_exp + 1 - shift_amount`, which correctly accounts for the implicit leading 1 bit in normalized floating-point representation.",
+        "failure_mode": "regressed test (compilation failed: /tmp/tdes_fpga_jwwuver3/fpm_normalize.v:1: syntax error\nI give up.)",
+        "triggering_input": "compile-time"
+      },
+      {
+        "generation": 4,
+        "approach": "Changed exponent calculation from `raw_exp - shift_amount + (product[47] ? 1 : 0)` to `raw_exp + shift_amount`, since left-shifting to normalize increases the exponent by the shift amount.",
+        "failure_mode": "regressed test (expected e129, got e128)",
+        "triggering_input": "C00000000000,e128"
+      }
+    ]
+  }
+}
