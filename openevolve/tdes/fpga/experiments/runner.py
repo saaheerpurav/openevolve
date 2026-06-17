@@ -22,6 +22,7 @@ from typing import List, Optional
 from openevolve.tdes import selection
 from openevolve.tdes.fpga import ablation, baselines, benchmark_loader, metrics
 from openevolve.tdes.fpga.config import FPGAConfig
+from openevolve.tdes.fpga.enhanced import ENHANCED_CONDITIONS, EnhancedFPGAController
 from openevolve.tdes.fpga.mutation import VerilogLLMMutator
 from openevolve.tdes.fpga.experiments import hierarchical_archx
 
@@ -102,6 +103,15 @@ class _InstrumentedFallback(_InstrumentedMixin, ablation.SingleAgentFallbackCont
     pass
 
 
+def _instrumented_enhanced(*args, **kwargs):
+    """Factory: _InstrumentedMixin + EnhancedFPGAController, constructed with given args."""
+
+    class _InstrumentedEnhanced(_InstrumentedMixin, EnhancedFPGAController):
+        pass
+
+    return _InstrumentedEnhanced(*args, **kwargs)
+
+
 class _NoCegisMutator:
     """Strips CEGIS feedback before delegating (the ``tdes_no_cegis`` ablation).
 
@@ -129,8 +139,9 @@ class _NoCegisMutator:
 _EXTRA_CONDITIONS = {"tdes_no_cegis": (dict(enable_crossover=True, enable_memory=True), None)}
 
 TDES_CONDITIONS = list(ablation.CONDITIONS)
-BASELINE_CONDITIONS = ["single_agent", "pass5"]
-ALL_CONDITIONS = TDES_CONDITIONS + BASELINE_CONDITIONS
+ENHANCED_COND_NAMES = list(ENHANCED_CONDITIONS)
+BASELINE_CONDITIONS = ["single_agent", "pass5", "best_of_30"]
+ALL_CONDITIONS = TDES_CONDITIONS + ENHANCED_COND_NAMES + BASELINE_CONDITIONS
 
 
 def build_ensemble(config: FPGAConfig):
@@ -202,6 +213,27 @@ def run_cell(
             module_first_solved=ctrl.module_first_solved,
         )
 
+    if condition in ENHANCED_CONDITIONS:
+        enhanced_kwargs = ENHANCED_CONDITIONS[condition]
+        mutator = ref_mutator if scripted else VerilogLLMMutator(counter, diff_based=cfg.diff_based)
+        if mutator is None:
+            return None
+        ctrl = _instrumented_enhanced(seed_cand, suite, mutator, cfg,
+                                       ensemble=counter, **enhanced_kwargs)
+        ctrl._counter = counter
+        result = ctrl.run()
+        return metrics.from_result(
+            design,
+            condition,
+            seed,
+            result,
+            total_tests=len(suite.tests),
+            crossover=ctrl.crossover_stats_as_dict(),
+            llm_calls=getattr(counter, "calls", 0),
+            calls_trajectory=ctrl.calls_trajectory,
+            module_first_solved=ctrl.module_first_solved,
+        )
+
     if condition in BASELINE_CONDITIONS:
         if scripted or ensemble is None:
             logger.info("skip baseline %s for %s (needs LLM)", condition, design)
@@ -209,6 +241,15 @@ def run_cell(
         if condition == "single_agent":
             br = baselines.single_agent_repair(
                 seed_cand, suite, counter, rounds=cfg.max_generations, timeout=cfg.suite_timeout
+            )
+        elif condition == "best_of_30":
+            br = baselines.pass_at_k(
+                list(seed_cand.modules)[0],
+                _description(suite),
+                suite,
+                counter,
+                k=30,
+                timeout=cfg.suite_timeout,
             )
         else:  # pass5
             br = baselines.pass_at_k(

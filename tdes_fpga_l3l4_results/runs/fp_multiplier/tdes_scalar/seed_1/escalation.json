@@ -1,0 +1,57 @@
+{
+  "reason": "stagnation",
+  "generation": 3,
+  "best_candidate": {
+    "id": "dec14e67c75a",
+    "score_key": [
+      0,
+      0,
+      1
+    ],
+    "summary": "system 0, integration 0, unit 1 (1/3 total)",
+    "modules": {
+      "fp_mult_special": "`timescale 1ns/1ps\nmodule fp_mult_special #(parameter EXP_WIDTH=8, MANT_WIDTH=23) (\n    input  [EXP_WIDTH+MANT_WIDTH:0] a,\n    input  [EXP_WIDTH+MANT_WIDTH:0] b,\n    output             is_special,\n    output reg [EXP_WIDTH+MANT_WIDTH:0] special_result,\n    output reg [2:0]   special_flags\n);\n    localparam SIGN_BIT = EXP_WIDTH + MANT_WIDTH;\n    localparam EXP_MSB = EXP_WIDTH + MANT_WIDTH - 1;\n    localparam EXP_LSB = MANT_WIDTH;\n    \n    wire [EXP_WIDTH-1:0] exp_a = a[EXP_MSB:EXP_LSB];\n    wire [MANT_WIDTH-1:0] mant_a = a[MANT_WIDTH-1:0];\n    wire [EXP_WIDTH-1:0] exp_b = b[EXP_MSB:EXP_LSB];\n    wire [MANT_WIDTH-1:0] mant_b = b[MANT_WIDTH-1:0];\n    \n    wire sign_a = a[SIGN_BIT];\n    wire sign_b = b[SIGN_BIT];\n    \n    wire a_is_zero = (exp_a == 0) && (mant_a == 0);\n    wire b_is_zero = (exp_b == 0) && (mant_b == 0);\n    wire a_is_inf = (exp_a == {EXP_WIDTH{1'b1}}) && (mant_a == 0);\n    wire b_is_inf = (exp_b == {EXP_WIDTH{1'b1}}) && (mant_b == 0);\n    wire a_is_nan = (exp_a == {EXP_WIDTH{1'b1}}) && (mant_a != 0);\n    wire b_is_nan = (exp_b == {EXP_WIDTH{1'b1}}) && (mant_b != 0);\n    \n    wire result_sign = sign_a ^ sign_b;\n    \n    // Check for special cases\n    wire is_zero_result = a_is_zero || b_is_zero;\n    wire is_nan_result = a_is_nan || b_is_nan || (a_is_inf && b_is_zero) || (a_is_zero && b_is_inf);\n    wire is_inf_result = (a_is_inf && !b_is_zero) || (b_is_inf && !a_is_zero);\n    \n    assign is_special = is_zero_result || is_nan_result || is_inf_result;\n    \n    always @(*) begin\n        if (is_nan_result) begin\n            // NaN: exponent all 1s, mantissa non-zero\n            special_result = {{1'b0}, {EXP_WIDTH{1'b1}}, {1'b1}, {MANT_WIDTH-1{1'b0}}};\n            special_flags = 3'b100;  // NaN flag\n        end\n        else if (is_inf_result) begin\n            // Infinity: exponent all 1s, mantissa zero, sign from multiplication\n            special_result = {{result_sign}, {EXP_WIDTH{1'b1}}, {MANT_WIDTH{1'b0}}};\n            special_flags = 3'b010;  // Infinity flag\n        end\n        else if (is_zero_result) begin\n            // Zero: exponent and mantissa zero, sign from multiplication\n            special_result = {{result_sign}, {EXP_WIDTH{1'b0}}, {MANT_WIDTH{1'b0}}};\n            special_flags = 3'b001;  // Zero flag\n        end\n        else begin\n            special_result = 0;\n            special_flags = 3'b000;\n        end\n    end\nendmodule",
+      "fp_mult_core": "`timescale 1ns/1ps\nmodule fp_mult_core #(parameter EXP_WIDTH=8, MANT_WIDTH=23) (\n    input  [EXP_WIDTH+MANT_WIDTH:0] a,\n    input  [EXP_WIDTH+MANT_WIDTH:0] b,\n    output reg [EXP_WIDTH+MANT_WIDTH:0] product,\n    output reg [2:0]   flags\n);\n    always @(*) begin product = 0; flags = 3'b000; end\nendmodule\n"
+    }
+  },
+  "failing_tests": [
+    {
+      "test_id": "unit_core",
+      "level": "UNIT",
+      "module": "fp_mult_core",
+      "description": "fp_mult_core: normal IEEE-754 significand multiply+normalize",
+      "failing_input": "a=3fc00000,b=40000000",
+      "error": "expected 40400000 flags=0, got xxxxxxxx flags=xxx"
+    },
+    {
+      "test_id": "system_full",
+      "level": "UNIT",
+      "module": "fp_mult_core",
+      "description": "floating_point_multiplier: all 10 ArchXBench test vectors",
+      "failing_input": "a=3fc00000,b=40000000",
+      "error": "expected 40400000 flags=0, got xxxxxxxx flags=xxx"
+    }
+  ],
+  "negative_memory": {
+    "fp_mult_core": [
+      {
+        "generation": 2,
+        "approach": "Implemented IEEE-754 single-precision floating point multiplication by extracting sign/exponent/mantissa, handling special cases (zero, infinity), multiplying mantissas with implicit leading 1 bit, adding exponents with bias adjustment, normalizing the result, and packing back into IEEE-754 format.",
+        "failure_mode": "regressed test (compilation failed: C:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_xd_b8ir0\\fp_mult_core.v:27: syntax error\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_xd_b8ir0\\fp_mult_core.v:27: Syntax in assignment statement l-value.\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_xd_b8ir0\\fp_mult_core.v:28: syntax error\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_xd_b8ir0\\fp_mult_core.v:28: Syntax in assignment statement l-value.\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_xd_b8ir0\\fp_mult_core.v:29: syntax error\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_xd_b8ir0\\fp_mult_core.v:29: Syntax in assignment statement l-value.\nC:\\Use...)",
+        "triggering_input": "compile-time"
+      },
+      {
+        "generation": 2,
+        "approach": "Implemented IEEE-754 single-precision floating-point multiplication by extracting sign/exponent/mantissa fields, handling special cases (zero/infinity), multiplying 24-bit mantissas with implicit leading 1 bit, adding exponents with bias adjustment, normalizing the result, and packing back into IEEE-754 format with proper overflow/underflow flags.",
+        "failure_mode": "regressed test (compilation failed: C:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_0w_5k8fe\\fp_mult_core.v:13: syntax error\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_0w_5k8fe\\fp_mult_core.v:13: Syntax in assignment statement l-value.\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_0w_5k8fe\\fp_mult_core.v:14: syntax error\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_0w_5k8fe\\fp_mult_core.v:14: Syntax in assignment statement l-value.\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_0w_5k8fe\\fp_mult_core.v:15: syntax error\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_0w_5k8fe\\fp_mult_core.v:15: Syntax in assignment statement l-value.\nC:\\Use...)",
+        "triggering_input": "compile-time"
+      },
+      {
+        "generation": 2,
+        "approach": "Implemented IEEE-754 single-precision floating-point multiplication by extracting sign/exponent/mantissa fields, handling special cases (zero/infinity), multiplying mantissas with implicit leading 1 bit, adding exponents with bias adjustment, normalizing the 48-bit product, and packing back into IEEE-754 format with overflow/underflow detection using proper combinational logic and wire assignments.",
+        "failure_mode": "regressed test (compilation failed: C:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_nvr8dmx7\\fp_mult_core.v:81: error: 'exp_final' is not a valid l-value for a procedural assignment.\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_nvr8dmx7\\fp_mult_core.v:15:      : 'exp_final' is declared here as a wire.\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_nvr8dmx7\\fp_mult_core.v:82: error: 'mant_final' is not a valid l-value for a procedural assignment.\nC:\\Users\\halag\\AppData\\Local\\Temp\\tdes_fpga_nvr8dmx7\\fp_mult_core.v:16:      : 'mant_final' is declared here as a wire.\n2 error(s) during elaboration.)",
+        "triggering_input": "compile-time"
+      }
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "reason": "stagnation",
+  "generation": 2,
+  "best_candidate": {
+    "id": "6ae5e94c1b83",
+    "score_key": [
+      0,
+      0,
+      0
+    ],
+    "summary": "system 0, integration 0, unit 0 (0/3 total)",
+    "modules": {
+      "fp_special_case": "`timescale 1ns/1ps\n// SEED SKELETON \u2014 fp_special_case\n// Ports are correct; logic intentionally empty.\nmodule fp_special_case #(parameter WIDTH = 32) (\n    input  [WIDTH-1:0] a,\n    input  [WIDTH-1:0] b,\n    input  [2:0]       rnd_mode,\n    output             is_special,\n    output reg [WIDTH-1:0] special_result,\n    output reg [2:0]   special_flags\n);\n    // TODO: implement special-case detection and output selection\n    assign is_special    = 1'b0;\n    always @(*) begin\n        special_result = {WIDTH{1'b0}};\n        special_flags  = 3'b000;\n    end\nendmodule\n",
+      "fp_adder_core": "`timescale 1ns/1ps\n// SEED SKELETON \u2014 fp_adder_core\n// Ports are correct; logic intentionally empty (outputs 0).\nmodule fp_adder_core #(parameter WIDTH = 32) (\n    input  [WIDTH-1:0] a,\n    input  [WIDTH-1:0] b,\n    input  [2:0]       rnd_mode,\n    output reg [WIDTH-1:0] result,\n    output reg [2:0]   flags\n);\n    // TODO: implement IEEE-754 single-precision FP addition\n    always @(*) begin\n        result = {WIDTH{1'b0}};\n        flags  = 3'b000;\n    end\nendmodule\n"
+    }
+  },
+  "failing_tests": [
+    {
+      "test_id": "unit_special",
+      "level": "UNIT",
+      "module": "fp_special_case",
+      "description": "fp_special_case: NaN/Inf/zero detection and output",
+      "failing_input": "a=7fc00000,b=3f800000,rnd=0",
+      "error": "expected is_sp=1 res=7fc00000 flags=100, got is_sp=0 res=xxxxxxxx flags=xxx"
+    },
+    {
+      "test_id": "unit_core",
+      "level": "UNIT",
+      "module": "fp_adder_core",
+      "description": "fp_adder_core: normal/denormal IEEE-754 addition",
+      "failing_input": "a=3f800000,b=40000000,rnd=0",
+      "error": "expected 40400000 flags=0, got xxxxxxxx flags=xxx"
+    },
+    {
+      "test_id": "system_full",
+      "level": "SYSTEM",
+      "module": "fp_adder_core",
+      "description": "floating_point_adder: all 36 ArchXBench test vectors",
+      "failing_input": "a=3f800000,b=40000000",
+      "error": "expected 40400000 flags=0, got xxxxxxxx flags=xxx"
+    }
+  ],
+  "negative_memory": {}
+}

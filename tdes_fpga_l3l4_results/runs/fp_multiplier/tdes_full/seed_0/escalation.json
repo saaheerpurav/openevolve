@@ -1,0 +1,44 @@
+{
+  "reason": "stagnation",
+  "generation": 2,
+  "best_candidate": {
+    "id": "4314851167b3",
+    "score_key": [
+      0,
+      0,
+      0
+    ],
+    "summary": "system 0, integration 0, unit 0 (0/3 total)",
+    "modules": {
+      "fp_mult_special": "`timescale 1ns/1ps\nmodule fp_mult_special #(parameter EXP_WIDTH=8, MANT_WIDTH=23) (\n    input  [EXP_WIDTH+MANT_WIDTH:0] a,\n    input  [EXP_WIDTH+MANT_WIDTH:0] b,\n    output             is_special,\n    output reg [EXP_WIDTH+MANT_WIDTH:0] special_result,\n    output reg [2:0]   special_flags\n);\n    assign is_special = 1'b0;\n    always @(*) begin special_result = 0; special_flags = 3'b000; end\nendmodule\n",
+      "fp_mult_core": "`timescale 1ns/1ps\nmodule fp_mult_core #(parameter EXP_WIDTH=8, MANT_WIDTH=23) (\n    input  [EXP_WIDTH+MANT_WIDTH:0] a,\n    input  [EXP_WIDTH+MANT_WIDTH:0] b,\n    output reg [EXP_WIDTH+MANT_WIDTH:0] product,\n    output reg [2:0]   flags\n);\n    always @(*) begin product = 0; flags = 3'b000; end\nendmodule\n"
+    }
+  },
+  "failing_tests": [
+    {
+      "test_id": "unit_special",
+      "level": "UNIT",
+      "module": "fp_mult_special",
+      "description": "fp_mult_special: NaN/Inf/zero detection for multiplication",
+      "failing_input": "a=00000000,b=00000000",
+      "error": "expected is_sp=1 res=00000000 flags=1, got is_sp=0 res=xxxxxxxx flags=xxx"
+    },
+    {
+      "test_id": "unit_core",
+      "level": "UNIT",
+      "module": "fp_mult_core",
+      "description": "fp_mult_core: normal IEEE-754 significand multiply+normalize",
+      "failing_input": "a=3fc00000,b=40000000",
+      "error": "expected 40400000 flags=0, got xxxxxxxx flags=xxx"
+    },
+    {
+      "test_id": "system_full",
+      "level": "SYSTEM",
+      "module": "fp_mult_core",
+      "description": "floating_point_multiplier: all 10 ArchXBench test vectors",
+      "failing_input": "a=00000000,b=00000000",
+      "error": "expected 00000000 flags=1, got xxxxxxxx flags=xxx"
+    }
+  ],
+  "negative_memory": {}
+}
