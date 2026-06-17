@@ -1,0 +1,96 @@
+{
+  "reason": "stagnation",
+  "generation": 4,
+  "best_candidate": {
+    "id": "b652b8bc9c18",
+    "score_key": [
+      22,
+      0,
+      33
+    ],
+    "summary": "system 22, integration 0, unit 33 (55/59 total)",
+    "modules": {
+      "fpm_unpack": "`timescale 1ns/1ps\nmodule fpm_unpack(\n    input  [31:0] a,\n    input  [31:0] b,\n    output        a_sign,\n    output [7:0]  a_exp,\n    output [23:0] a_mant,\n    output        b_sign,\n    output [7:0]  b_exp,\n    output [23:0] b_mant,\n    output        a_is_nan,\n    output        a_is_inf,\n    output        a_is_zero,\n    output        b_is_nan,\n    output        b_is_inf,\n    output        b_is_zero\n);\n\n    // Unpack a\n    wire a_sign_bit = a[31];\n    wire [7:0] a_exp_bits = a[30:23];\n    wire [22:0] a_mant_bits = a[22:0];\n    \n    // Unpack b\n    wire b_sign_bit = b[31];\n    wire [7:0] b_exp_bits = b[30:23];\n    wire [22:0] b_mant_bits = b[22:0];\n    \n    // Detect special cases for a\n    wire a_is_zero_int = (a_exp_bits == 8'b0) && (a_mant_bits == 23'b0);\n    wire a_is_denormal = (a_exp_bits == 8'b0) && (a_mant_bits != 23'b0);\n    wire a_is_inf_int = (a_exp_bits == 8'hFF) && (a_mant_bits == 23'b0);\n    wire a_is_nan_int = (a_exp_bits == 8'hFF) && (a_mant_bits != 23'b0);\n    \n    // Detect special cases for b\n    wire b_is_zero_int = (b_exp_bits == 8'b0) && (b_mant_bits == 23'b0);\n    wire b_is_denormal = (b_exp_bits == 8'b0) && (b_mant_bits != 23'b0);\n    wire b_is_inf_int = (b_exp_bits == 8'hFF) && (b_mant_bits == 23'b0);\n    wire b_is_nan_int = (b_exp_bits == 8'hFF) && (b_mant_bits != 23'b0);\n    \n    // Mantissa with implicit leading 1 for normalized numbers, or as-is for denormals\n    wire [23:0] a_mant_normalized = a_is_denormal ? {1'b0, a_mant_bits} : {1'b1, a_mant_bits};\n    wire [23:0] b_mant_normalized = b_is_denormal ? {1'b0, b_mant_bits} : {1'b1, b_mant_bits};\n    \n    // Assign outputs for a\n    assign a_sign = a_sign_bit;\n    assign a_exp = a_exp_bits;\n    assign a_mant = a_mant_normalized;\n    assign a_is_nan = a_is_nan_int;\n    assign a_is_inf = a_is_inf_int;\n    assign a_is_zero = a_is_zero_int;\n    \n    // Assign outputs for b\n    assign b_sign = b_sign_bit;\n    assign b_exp = b_exp_bits;\n    assign b_mant = b_mant_normalized;\n    assign b_is_nan = b_is_nan_int;\n    assign b_is_inf = b_is_inf_int;\n    assign b_is_zero = b_is_zero_int;\n\nendmodule",
+      "fpm_multiply": "`timescale 1ns/1ps\nmodule fpm_multiply(\n    input         a_sign,\n    input  [7:0]  a_exp,\n    input  [23:0] a_mant,\n    input         b_sign,\n    input  [7:0]  b_exp,\n    input  [23:0] b_mant,\n    output        result_sign,\n    output [47:0] product,\n    output [9:0]  raw_exp\n);\n    // Result sign is XOR of input signs\n    assign result_sign = a_sign ^ b_sign;\n    \n    // Product of mantissas (24-bit \u00d7 24-bit = 48-bit)\n    assign product = a_mant * b_mant;\n    \n    // Raw exponent: sum of exponents minus bias\n    // In IEEE 754, bias is 127. When multiplying, exp_result = exp_a + exp_b - bias\n    assign raw_exp = {1'b0, a_exp} + {1'b0, b_exp} - 10'd127;\n    \nendmodule",
+      "fpm_normalize": "`timescale 1ns/1ps\nmodule fpm_normalize(\n    input  [47:0] product,\n    input  [9:0]  raw_exp,\n    output [22:0] norm_frac,\n    output [9:0]  norm_exp,\n    output        guard,\n    output        sticky\n);\n    wire [22:0] norm_frac_unshifted;\n    wire [22:0] norm_frac_shifted;\n    wire guard_unshifted;\n    wire guard_shifted;\n    wire sticky_unshifted;\n    wire sticky_shifted;\n    \n    // When bit 47 is clear: extract bits [45:23] as fraction, bit 22 as guard, OR of [21:0] as sticky\n    assign norm_frac_unshifted = product[45:23];\n    assign guard_unshifted = product[22];\n    assign sticky_unshifted = |product[21:0];\n    \n    // When bit 47 is set: right-shift, extract bits [46:24] as fraction, bit 23 as guard, OR of [22:0] as sticky\n    assign norm_frac_shifted = product[46:24];\n    assign guard_shifted = product[23];\n    assign sticky_shifted = |product[22:0];\n    \n    // Select based on bit 47\n    assign norm_frac = product[47] ? norm_frac_shifted : norm_frac_unshifted;\n    assign guard = product[47] ? guard_shifted : guard_unshifted;\n    assign sticky = product[47] ? sticky_shifted : sticky_unshifted;\n    \n    // Exponent adjustment\n    assign norm_exp = product[47] ? (raw_exp + 10'd1) : raw_exp;\n    \nendmodule",
+      "fpm_round_pack": "`timescale 1ns/1ps\nmodule fpm_round_pack(\n    input         sign,\n    input  [22:0] norm_frac,\n    input  [9:0]  norm_exp,\n    input         guard,\n    input         sticky,\n    output reg [31:0] result,\n    output reg        overflow,\n    output reg        underflow\n);\n    always @(*) begin\n        overflow = 0;\n        underflow = 0;\n        result = 0;\n        \n        // Check for underflow (exponent is 0)\n        if (norm_exp == 10'd0) begin\n            underflow = 1;\n            result = {sign, 31'b0};  // Return signed zero\n        end\n        // Check for overflow (exponent is 255 or more)\n        else if (norm_exp >= 10'd255) begin\n            overflow = 1;\n            // Return signed infinity\n            result = {sign, 8'b11111111, 23'b0};\n        end\n        else begin\n            // Normal case: pack the number\n            reg [22:0] frac_to_pack;\n            reg [8:0] exp_to_pack;\n            \n            // Determine if we should round up\n            reg round_up;\n            round_up = 0;\n            \n            if (guard == 1) begin\n                // Guard bit is 1\n                if (sticky == 1) begin\n                    // guard=1, sticky=1: always round up\n                    round_up = 1;\n                end\n                else begin\n                    // guard=1, sticky=0: round up only if LSB is 1 (banker's rounding)\n                    round_up = norm_frac[0];\n                end\n            end\n            \n            // Apply rounding\n            if (round_up) begin\n                frac_to_pack = norm_frac + 23'd1;\n                // Check if fraction overflowed (all 1s became 0s + carry)\n                if (frac_to_pack == 23'd0) begin\n                    // Fraction overflowed, increment exponent\n                    exp_to_pack = norm_exp[8:0] + 9'd1;\n                end\n                else begin\n                    exp_to_pack = norm_exp[8:0];\n                end\n            end\n            else begin\n                frac_to_pack = norm_frac;\n                exp_to_pack = norm_exp[8:0];\n            end\n            \n            // Pack into IEEE 754 format\n            result = {sign, exp_to_pack, frac_to_pack};\n        end\n    end\nendmodule",
+      "fpm_special": "`timescale 1ns/1ps\nmodule fpm_special(\n    input         a_is_nan,\n    input         a_is_inf,\n    input         a_is_zero,\n    input         b_is_nan,\n    input         b_is_inf,\n    input         b_is_zero,\n    input         result_sign,\n    output        is_special,\n    output reg [31:0] special_result\n);\n    \n    wire is_nan;\n    wire is_inf_times_zero;\n    wire is_inf;\n    wire is_zero;\n    \n    // NaN if either input is NaN\n    assign is_nan = a_is_nan | b_is_nan;\n    \n    // Inf \u00d7 0 or 0 \u00d7 Inf is NaN\n    assign is_inf_times_zero = (a_is_inf & b_is_zero) | (a_is_zero & b_is_inf);\n    \n    // Result is special if any special case detected\n    assign is_special = is_nan | is_inf_times_zero | a_is_inf | b_is_inf | a_is_zero | b_is_zero;\n    \n    // Determine if result should be Inf (but not if it's Inf\u00d70 which becomes NaN)\n    assign is_inf = (a_is_inf | b_is_inf) & ~is_inf_times_zero;\n    \n    // Determine if result should be Zero (but not if it's Inf\u00d70 which becomes NaN)\n    assign is_zero = (a_is_zero | b_is_zero) & ~is_inf_times_zero;\n    \n    always @(*) begin\n        if (is_nan | is_inf_times_zero) begin\n            // Output NaN: 0x7FC00000\n            special_result = 32'h7FC00000;\n        end\n        else if (is_inf) begin\n            // Output Infinity with sign\n            special_result = {result_sign, 8'hFF, 23'h0};\n        end\n        else if (is_zero) begin\n            // Output Zero with sign\n            special_result = {result_sign, 31'h0};\n        end\n        else begin\n            special_result = 32'h0;\n        end\n    end\n    \nendmodule"
+    }
+  },
+  "failing_tests": [
+    {
+      "test_id": "rpack_neg",
+      "level": "UNIT",
+      "module": "fpm_round_pack",
+      "description": "fpm_round_pack: -2.0 \u2192 C0000000",
+      "failing_input": "s1,f0,e128",
+      "error": "expected C0000000, got 40000000"
+    },
+    {
+      "test_id": "sys_neg1x2",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: -1.0\u00d72.0 = -2.0",
+      "failing_input": "a=bf800000,b=40000000",
+      "error": "expected c0000000, got 40000000"
+    },
+    {
+      "test_id": "sys_1xneg2",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 1.0\u00d7-2.0 = -2.0",
+      "failing_input": "a=3f800000,b=c0000000",
+      "error": "expected c0000000, got 40000000"
+    },
+    {
+      "test_id": "sys_underflow",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: tiny\u00d7tiny = 0 (underflow)",
+      "failing_input": "a=00800000,b=00800000",
+      "error": "expected 00000000, got 7f800000"
+    }
+  ],
+  "negative_memory": {
+    "fpm_normalize": [
+      {
+        "generation": 1,
+        "approach": "Normalize the 48-bit product by checking bit 47; if set, right-shift fraction and increment exponent; extract bits 46-24 (or 47-25 if shifted) as normalized fraction; guard is bit 23, sticky is OR of bits 22-0.",
+        "failure_mode": "regressed test (expected 00000000, got 7f800000)",
+        "triggering_input": "a=00800000,b=00800000"
+      },
+      {
+        "generation": 2,
+        "approach": "Normalize by checking bit 47 of the 48-bit product; if clear, extract bits [46:24] as fraction with bit 23 as guard and OR of bits [22:0] as sticky; if set, right-shift to extract bits [47:25] as fraction with bit 24 as guard, increment exponent, and OR bits [23:0] as sticky.",
+        "failure_mode": "regressed test (expected 00000000, got 7f800000)",
+        "triggering_input": "a=00800000,b=00800000"
+      },
+      {
+        "generation": 2,
+        "approach": "Normalize 48-bit product by checking bit 47; if set, right-shift to extract bits [47:25] as fraction with bit 24 as guard and OR of bits [23:0] as sticky, incrementing exponent; if clear, extract bits [46:24] as fraction with bit 23 as guard and OR of bits [22:0] as sticky.",
+        "failure_mode": "regressed test (expected 00000000, got 7f800000)",
+        "triggering_input": "a=00800000,b=00800000"
+      }
+    ],
+    "fpm_round_pack": [
+      {
+        "generation": 2,
+        "approach": "Fixed the rounding logic by using a proper 24-bit temporary to detect fraction overflow (when bit 23 becomes 1 after adding 1), only incrementing the exponent when fraction actually overflows, and correctly extracting the 8-bit biased exponent for IEEE 754 packing.",
+        "failure_mode": "regressed test (compilation failed: /tmp/tdes_fpga_gh4y6s5g/fpm_round_pack.v:1: syntax error\nI give up.)",
+        "triggering_input": "compile-time"
+      },
+      {
+        "generation": 3,
+        "approach": "Fixed sign bit preservation by ensuring it's used in all result assignments, corrected fraction overflow detection using a 24-bit temporary where bit 23 indicates overflow, moved underflow/overflow checks after rounding to catch exponent overflow from rounding, and properly extract the lower 8 bits of exponent and lower 23 bits of fraction in the normal packing case.",
+        "failure_mode": "regressed test (compilation failed: /tmp/tdes_fpga_sf73brce/fpm_round_pack.v:1: syntax error\nI give up.)",
+        "triggering_input": "compile-time"
+      },
+      {
+        "generation": 3,
+        "approach": "Fixed sign bit preservation in normal case by explicitly using `sign` in result assignment, corrected fraction overflow detection using a 24-bit temporary where bit 23 indicates overflow, moved underflow/overflow checks after rounding to catch exponent changes from rounding, and properly extract 8-bit exponent and 23-bit fraction for IEEE 754 packing.",
+        "failure_mode": "regressed test (compilation failed: /tmp/tdes_fpga_d8dga4u4/fpm_round_pack.v:18: syntax error\n/tmp/tdes_fpga_d8dga4u4/fpm_round_pack.v:18: error: Malformed statement\n/tmp/tdes_fpga_d8dga4u4/fpm_round_pack.v:19: syntax error\n/tmp/tdes_fpga_d8dga4u4/fpm_round_pack.v:19: error: Malformed statement\n/tmp/tdes_fpga_d8dga4u4/fpm_round_pack.v:20: syntax error\n/tmp/tdes_fpga_d8dga4u4/fpm_round_pack.v:20: error: Malformed statement)",
+        "triggering_input": "compile-time"
+      }
+    ]
+  }
+}

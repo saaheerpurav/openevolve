@@ -1,0 +1,112 @@
+{
+  "reason": "stagnation",
+  "generation": 4,
+  "best_candidate": {
+    "id": "e7979f4f1da4",
+    "score_key": [
+      22,
+      0,
+      31
+    ],
+    "summary": "system 22, integration 0, unit 31 (53/59 total)",
+    "modules": {
+      "fpm_unpack": "`timescale 1ns/1ps\nmodule fpm_unpack(\n    input  [31:0] a,\n    input  [31:0] b,\n    output        a_sign,\n    output [7:0]  a_exp,\n    output [23:0] a_mant,\n    output        b_sign,\n    output [7:0]  b_exp,\n    output [23:0] b_mant,\n    output        a_is_nan,\n    output        a_is_inf,\n    output        a_is_zero,\n    output        b_is_nan,\n    output        b_is_inf,\n    output        b_is_zero\n);\n\n    // Extract fields from a\n    wire a_sign_bit = a[31];\n    wire [7:0] a_exp_bits = a[30:23];\n    wire [22:0] a_mant_bits = a[22:0];\n    \n    // Extract fields from b\n    wire b_sign_bit = b[31];\n    wire [7:0] b_exp_bits = b[30:23];\n    wire [22:0] b_mant_bits = b[22:0];\n    \n    // Detect special cases for a\n    wire a_is_zero_val = (a_exp_bits == 8'b0) & (a_mant_bits == 23'b0);\n    wire a_is_inf_val = (a_exp_bits == 8'hFF) & (a_mant_bits == 23'b0);\n    wire a_is_nan_val = (a_exp_bits == 8'hFF) & (a_mant_bits != 23'b0);\n    \n    // Detect special cases for b\n    wire b_is_zero_val = (b_exp_bits == 8'b0) & (b_mant_bits == 23'b0);\n    wire b_is_inf_val = (b_exp_bits == 8'hFF) & (b_mant_bits == 23'b0);\n    wire b_is_nan_val = (b_exp_bits == 8'hFF) & (b_mant_bits != 23'b0);\n    \n    // Add implicit leading 1 for normalized numbers (exp != 0 and exp != 255)\n    wire a_is_normalized = (a_exp_bits != 8'b0) & (a_exp_bits != 8'hFF);\n    wire b_is_normalized = (b_exp_bits != 8'b0) & (b_exp_bits != 8'hFF);\n    \n    wire [23:0] a_mant_val = a_is_normalized ? {1'b1, a_mant_bits} : {1'b0, a_mant_bits};\n    wire [23:0] b_mant_val = b_is_normalized ? {1'b1, b_mant_bits} : {1'b0, b_mant_bits};\n    \n    // Assign outputs for a\n    assign a_sign = a_sign_bit;\n    assign a_exp = a_exp_bits;\n    assign a_mant = a_mant_val;\n    assign a_is_nan = a_is_nan_val;\n    assign a_is_inf = a_is_inf_val;\n    assign a_is_zero = a_is_zero_val;\n    \n    // Assign outputs for b\n    assign b_sign = b_sign_bit;\n    assign b_exp = b_exp_bits;\n    assign b_mant = b_mant_val;\n    assign b_is_nan = b_is_nan_val;\n    assign b_is_inf = b_is_inf_val;\n    assign b_is_zero = b_is_zero_val;\n\nendmodule",
+      "fpm_multiply": "`timescale 1ns/1ps\nmodule fpm_multiply(\n    input         a_sign,\n    input  [7:0]  a_exp,\n    input  [23:0] a_mant,\n    input         b_sign,\n    input  [7:0]  b_exp,\n    input  [23:0] b_mant,\n    output        result_sign,\n    output [47:0] product,\n    output [9:0]  raw_exp\n);\n    // Sign is XOR of input signs\n    assign result_sign = a_sign ^ b_sign;\n    \n    // Exponent: subtract bias once during addition\n    // result_exp = (a_exp - 127) + (b_exp - 127) + 127 = a_exp + b_exp - 127\n    wire [9:0] exp_sum;\n    assign exp_sum = {1'b0, a_exp} + {1'b0, b_exp} - 10'd127;\n    assign raw_exp = exp_sum;\n    \n    // Mantissa multiplication: (1.a_mant) \u00d7 (1.b_mant)\n    // Treat 24-bit mantissa as fractional part after implicit leading 1\n    // (1 + a_mant/2^24) * (1 + b_mant/2^24)\n    // Multiply as integers treating implicit 1 as 2^24:\n    // (2^24 + a_mant) * (2^24 + b_mant) = 2^48 + a_mant*2^24 + b_mant*2^24 + a_mant*b_mant\n    \n    wire [47:0] mant_a_scaled;  // a_mant in 48-bit with implicit 1\n    wire [47:0] mant_b_scaled;  // b_mant in 48-bit with implicit 1\n    \n    assign mant_a_scaled = {1'b1, a_mant};  // 1.a_mant as 48-bit (bit 47 is the 1, bits 46:23 are a_mant)\n    assign mant_b_scaled = {1'b1, b_mant};  // 1.b_mant as 48-bit\n    \n    wire [95:0] full_product;\n    assign full_product = mant_a_scaled * mant_b_scaled;  // 48\u00d748 = 96-bit product\n    \n    // The product is in range [1, 4) in 48-bit fixed point\n    // Bits [95:48] contain the integer part, bits [47:0] contain the fractional part\n    // We want to return the normalized 48-bit mantissa (bits [47:0] of the result after normalization)\n    // Since product is 96-bit and we want 48-bit output with implicit leading 1,\n    // we take bits [95:48] which gives us the result with leading 1 in the implicit position\n    \n    assign product = full_product[95:48];\n    \nendmodule",
+      "fpm_normalize": "`timescale 1ns/1ps\nmodule fpm_normalize(\n    input  [47:0] product,\n    input  [9:0]  raw_exp,\n    output [22:0] norm_frac,\n    output [9:0]  norm_exp,\n    output        guard,\n    output        sticky\n);\n    wire needs_shift;\n    \n    // Check if bit 47 is set (product >= 2.0 in normalized form)\n    assign needs_shift = product[47];\n    \n    // Fraction extraction:\n    // If shift needed (bit 47 = 1): frac = bits [46:24]\n    // If no shift (bit 47 = 0): frac = bits [45:23]\n    assign norm_frac = needs_shift ? product[46:24] : product[45:23];\n    \n    // Exponent adjustment\n    assign norm_exp = needs_shift ? (raw_exp + 10'd1) : raw_exp;\n    \n    // Guard bit:\n    // If shift needed: guard = bit 23\n    // If no shift: guard = bit 22\n    assign guard = needs_shift ? product[23] : product[22];\n    \n    // Sticky bit (OR of all remaining bits):\n    // If shift needed: sticky = OR(bits[22:0])\n    // If no shift: sticky = OR(bits[21:0])\n    assign sticky = needs_shift ? \n                    (|product[22:0]) : \n                    (|product[21:0]);\n    \nendmodule",
+      "fpm_round_pack": "`timescale 1ns/1ps\nmodule fpm_round_pack(\n    input         sign,\n    input  [22:0] norm_frac,\n    input  [9:0]  norm_exp,\n    input         guard,\n    input         sticky,\n    output reg [31:0] result,\n    output reg        overflow,\n    output reg        underflow\n);\n    \n    always @(*) begin\n        overflow = 0;\n        underflow = 0;\n        result = 0;\n        \n        // Check for special cases\n        if (norm_exp == 10'd0) begin\n            // Underflow: exponent is 0\n            underflow = 1;\n            result = {sign, 31'd0};  // Return signed zero\n        end\n        else if (norm_exp >= 10'd255) begin\n            // Overflow: exponent is 255 or greater\n            overflow = 1;\n            // Return signed infinity\n            result = {sign, 8'b11111111, 23'd0};\n        end\n        else begin\n            // Normal case: pack the number\n            // We need to handle rounding with the implicit leading 1\n            reg [23:0] mantissa_with_implicit;\n            reg [23:0] rounded_mantissa;\n            reg [9:0] rounded_exp;\n            \n            mantissa_with_implicit = {1'b1, norm_frac};  // Add implicit leading 1\n            rounded_mantissa = mantissa_with_implicit;\n            rounded_exp = norm_exp;\n            \n            // Rounding logic (round to nearest, ties to even)\n            // Round up if guard=1 and (sticky=1 or lsb=1)\n            if (guard & (sticky | mantissa_with_implicit[0])) begin\n                rounded_mantissa = mantissa_with_implicit + 1;\n                // Check if mantissa overflowed (24-bit overflow)\n                if (rounded_mantissa[23] == 1'b0) begin\n                    // Mantissa overflowed past 24 bits, increment exponent\n                    rounded_exp = norm_exp + 1;\n                    // Check if this caused overflow to exponent 255\n                    if (rounded_exp >= 10'd255) begin\n                        overflow = 1;\n                        result = {sign, 8'b11111111, 23'd0};  // Return infinity\n                    end\n                    else begin\n                        // After overflow, mantissa is 1.0, so frac is all 0s\n                        result = {sign, rounded_exp[7:0], 23'd0};\n                    end\n                end\n                else begin\n                    // Normal case: use the lower 23 bits as fraction\n                    result = {sign, rounded_exp[7:0], rounded_mantissa[22:0]};\n                end\n            end\n            else begin\n                result = {sign, rounded_exp[7:0], norm_frac};\n            end\n        end\n    end\n    \nendmodule",
+      "fpm_special": "`timescale 1ns/1ps\nmodule fpm_special(\n    input         a_is_nan,\n    input         a_is_inf,\n    input         a_is_zero,\n    input         b_is_nan,\n    input         b_is_inf,\n    input         b_is_zero,\n    input         result_sign,\n    output        is_special,\n    output reg [31:0] special_result\n);\n\n    // Detect special cases\n    wire is_nan = a_is_nan | b_is_nan;\n    wire is_inf_times_zero = (a_is_inf & b_is_zero) | (b_is_inf & a_is_zero);\n    wire is_inf = (a_is_inf | b_is_inf) & ~is_inf_times_zero;\n    wire is_zero = (a_is_zero | b_is_zero) & ~is_nan & ~is_inf_times_zero;\n    \n    assign is_special = is_nan | is_inf_times_zero | is_inf | is_zero;\n    \n    always @(*) begin\n        if (is_nan) begin\n            special_result = 32'h7FC00000;  // Quiet NaN\n        end\n        else if (is_inf_times_zero) begin\n            special_result = 32'h7FC00000;  // NaN (inf * 0 is undefined)\n        end\n        else if (is_inf) begin\n            if (result_sign)\n                special_result = 32'hFF800000;  // -Inf\n            else\n                special_result = 32'h7F800000;  // +Inf\n        end\n        else if (is_zero) begin\n            if (result_sign)\n                special_result = 32'h80000000;  // -Zero\n            else\n                special_result = 32'h00000000;  // +Zero\n        end\n        else begin\n            special_result = 32'h00000000;\n        end\n    end\n\nendmodule"
+    }
+  },
+  "failing_tests": [
+    {
+      "test_id": "mult_1x1",
+      "level": "UNIT",
+      "module": "fpm_multiply",
+      "description": "fpm_multiply: 1.0\u00d71.0 product and exponent",
+      "failing_input": "1.0*1.0",
+      "error": "expected s0,p=400000000000,e=127, got s0,p=000000000002,e=127"
+    },
+    {
+      "test_id": "mult_1p5x2",
+      "level": "UNIT",
+      "module": "fpm_multiply",
+      "description": "fpm_multiply: 1.5\u00d72.0 product and exponent",
+      "failing_input": "1.5*2.0",
+      "error": "expected s0,p=600000000000,e=128, got s0,p=000000000002,e=128"
+    },
+    {
+      "test_id": "mult_2x3",
+      "level": "UNIT",
+      "module": "fpm_multiply",
+      "description": "fpm_multiply: 2.0\u00d73.0 product and exponent",
+      "failing_input": "2.0*3.0",
+      "error": "expected p=600000000000,e=129, got p=000000000002,e=129"
+    },
+    {
+      "test_id": "sys_2x3",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: 2.0\u00d73.0 = 6.0",
+      "failing_input": "a=40000000,b=40400000",
+      "error": "expected 40c00000, got 40800000"
+    },
+    {
+      "test_id": "sys_underflow",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: tiny\u00d7tiny = 0 (underflow)",
+      "failing_input": "a=00800000,b=00800000",
+      "error": "expected 00000000, got 7f800000"
+    },
+    {
+      "test_id": "sys_third_x2",
+      "level": "SYSTEM",
+      "module": "fpm_round_pack",
+      "description": "fp_mult_pipeline: \u2153\u00d72 = \u2154 (rounding)",
+      "failing_input": "a=3eaaaaab,b=40000000",
+      "error": "expected 3f2aaaab, got 3f000000"
+    }
+  ],
+  "negative_memory": {
+    "fpm_multiply": [
+      {
+        "generation": 2,
+        "approach": "Implemented floating-point multiplication by computing result_sign as XOR of input signs, multiplying mantissas (with implicit leading 1 bit) as 24-bit values to produce a 48-bit product, and computing raw_exp as the sum of exponents minus the bias (127).",
+        "failure_mode": "regressed test (expected 00000000, got 41800000)",
+        "triggering_input": "a=00800000,b=00800000"
+      },
+      {
+        "generation": 3,
+        "approach": "Fixed mantissa representation by properly left-shifting the 24-bit mantissa by 23 bits when forming the 48-bit scaled values, so the implicit leading 1 occupies bit 47 and the fractional part is correctly positioned in bits 46:0, ensuring the 96-bit product's upper 48 bits yield the correct normalized mantissa output.",
+        "failure_mode": "regressed test (expected 3e800000, got 3f100000)",
+        "triggering_input": "a=3f000000,b=3f000000"
+      },
+      {
+        "generation": 3,
+        "approach": "Fixed mantissa scaling by left-shifting each 24-bit mantissa by 24 bits to create proper 48-bit fixed-point representations, then extracting the upper 48 bits of the 96-bit product to get the correctly normalized mantissa output.",
+        "failure_mode": "regressed test (compilation failed: /tmp/tdes_fpga_vr_bmoo2/fpm_multiply.v:1: syntax error\nI give up.)",
+        "triggering_input": "compile-time"
+      }
+    ],
+    "fpm_round_pack": [
+      {
+        "generation": 2,
+        "approach": "Moved all variable declarations (`rounded_frac`, `rounded_exp`, `round_up`, `frac_with_implicit`) to module scope outside the `always @(*)` block to enable proper synthesis, and fixed rounding overflow handling to correctly incorporate the implicit leading 1 bit when detecting mantissa overflow.",
+        "failure_mode": "regressed test (expected 3F800001, got 40000001)",
+        "triggering_input": "f0,e127,g1,s1"
+      },
+      {
+        "generation": 3,
+        "approach": "Fixed rounding overflow detection by properly checking if adding 1 to the 23-bit fraction causes a carry (by using a 24-bit intermediate and checking bit 23), and correctly handling the case where rounding causes mantissa overflow requiring exponent increment.",
+        "failure_mode": "regressed test (expected 3F800001, got 7f000001)",
+        "triggering_input": "f0,e127,g1,s1"
+      },
+      {
+        "generation": 3,
+        "approach": "Fixed the rounding logic to properly detect mantissa overflow by computing the rounded mantissa as a 24-bit value (with implicit leading 0 bit) and checking if bit 23 becomes set, which indicates the mantissa would overflow to 2.0 and requires exponent increment.",
+        "failure_mode": "regressed test (compilation failed: /tmp/tdes_fpga_2v3i6bmx/fpm_round_pack.v:1: syntax error\nI give up.)",
+        "triggering_input": "compile-time"
+      }
+    ]
+  }
+}

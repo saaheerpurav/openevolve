@@ -111,8 +111,13 @@ class VerilogTestSuite:
         ``sandbox`` is accepted for interface parity but is implicit: each test
         runs in its own iverilog/vvp subprocess with a timeout. The flag is
         otherwise ignored (the EDA subprocess *is* the sandbox).
+
+        Simulation results are cached per (testbench_source, modules) pair so
+        that fine-grained suites sharing the same testbench across many tests
+        only compile+simulate once per unique (testbench, module-set) pair.
         """
         vector = TestVector()
+        sim_cache: dict = {}  # (testbench_source, frozenset(module_items)) -> SimResult
         for test in self.tests:
             if test.is_synthesis:
                 outcome = self._run_synthesis_test(candidate, test)
@@ -125,12 +130,14 @@ class VerilogTestSuite:
                     }
                 else:
                     mods = candidate.modules
-                outcome = verilog_runner.run_single_test(
-                    test.id,
-                    mods,
-                    test.testbench_source,
-                    timeout=timeout,
-                    verilog_std=self.verilog_std,
+                cache_key = (test.testbench_source, frozenset(mods.items()))
+                if cache_key not in sim_cache:
+                    sim_cache[cache_key] = verilog_runner.simulate(
+                        mods, test.testbench_source,
+                        timeout=timeout, verilog_std=self.verilog_std,
+                    )
+                outcome = verilog_runner.interpret(
+                    test.id, sim_cache[cache_key], timeout=timeout
                 )
             feedback = None
             if not outcome.passed:
